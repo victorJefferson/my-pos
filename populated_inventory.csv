@@ -1,0 +1,59 @@
+Category,Item Name,Selling Price,Cost Price,Stock Quantity
+IceCream,Amul Vanilla Cup (125ml),30,22,50
+IceCream,Amul Chocobar,30,22,40
+IceCream,Kwality Walls Cornetto,50,38,30
+IceCream,Amul Kulfi,40,28,35
+IceCream,Havmor Choco Cone,45,32,25
+IceCream,Amul Mango Dolly,25,18,60
+IceCream,NIC Natural Mango Cup,80,60,20
+IceCream,Amul Tricone,40,30,30
+CoolDrink,Coca-Cola 250ml Can,40,30,100
+CoolDrink,Pepsi 250ml Can,40,30,80
+CoolDrink,Sprite 250ml Can,40,30,90
+CoolDrink,Thums Up 250ml Can,40,30,85
+CoolDrink,Limca 250ml Can,40,30,70
+CoolDrink,Fanta 250ml Can,40,30,65
+CoolDrink,Maaza Mango 250ml,35,25,120
+CoolDrink,Frooti 200ml Tetra,20,14,150
+CoolDrink,Minute Maid Pulpy Orange 400ml,50,38,60
+CoolDrink,Mountain Dew 250ml Can,40,30,75
+CoolDrink,7UP 250ml Can,40,30,70
+CoolDrink,Tropicana Mixed Fruit 200ml,30,22,80
+CoolDrink,Red Bull 250ml,110,85,40
+CoolDrink,Sting Energy 250ml,20,14,100
+CoolDrink,Bisleri Water 500ml,20,12,200
+CoolDrink,Kinley Soda 300ml,15,10,80
+Snack,Lays Classic Salted 26g,20,14,100
+Snack,Lays Magic Masala 26g,20,14,100
+Snack,Kurkure Masala Munch 30g,20,14,90
+Snack,Haldirams Aloo Bhujia 100g,50,38,60
+Snack,Bingo Mad Angles 35g,20,14,80
+Snack,Parle G Biscuit 100g,10,7,150
+Snack,Monaco Biscuit 60g,20,15,100
+Snack,Oreo Chocolate 46g,30,22,80
+Snack,Good Day Cashew 75g,30,22,70
+Snack,Britannia 50-50 75g,25,18,90
+Snack,Perk Chocolate 38g,20,14,100
+Snack,KitKat 2-Finger 15g,30,22,80
+Snack,5 Star Chocolate 40g,20,14,100
+Snack,Dairy Milk Silk 60g,60,45,60
+Snack,Mentos Mint Tube,10,7,120
+Snack,Alpenliebe Caramel,5,3,200
+Snack,Polo Mint,5,3,200
+Dairy,Amul Taaza 500ml,28,22,80
+Dairy,Amul Butter 100g,58,46,50
+Dairy,Amul Cheese Slice 200g,120,90,30
+Dairy,Mother Dairy Curd 400g,45,34,40
+Dairy,Amul Masti Dahi 400g,42,32,45
+Bakery,Britannia Bread 400g,45,35,30
+Bakery,English Oven Multigrain Bread 400g,65,50,20
+Bakery,Harvest Gold White Bread,40,30,25
+Personal Care,Colgate Strong Teeth 100g,65,50,30
+Personal Care,Pepsodent Toothpaste 75g,55,42,25
+Personal Care,Dettol Soap 75g,45,34,40
+Personal Care,Lifebuoy Soap 100g,30,22,50
+Personal Care,Dove Body Wash 200ml,180,140,20
+Personal Care,Parachute Coconut Oil 100ml,65,50,30
+Stationery,Classmate Notebook 200pg,85,65,20
+Stationery,Cello Ball Pen Blue,10,6,100
+Stationery,Fevicol 50g,30,22,25
