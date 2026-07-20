@@ -1,7 +1,10 @@
 import axios from 'axios'
 import { getToken } from '../tokenStore'
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+let rawBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1').trim()
+if (rawBase.endsWith('/')) rawBase = rawBase.slice(0, -1)
+if (!rawBase.endsWith('/api/v1')) rawBase = `${rawBase}/api/v1`
+const BASE_URL = rawBase
 
 export const getTenantId = () =>
   localStorage.getItem('rc_tenant_id') || import.meta.env.VITE_TENANT_ID || ''
