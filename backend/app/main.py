@@ -16,8 +16,6 @@ from app.routers.ai import router as ai_router
 from app.routers.auth import router as auth_router
 from app.routers.expenses import router as expenses_router
 
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
-
 app = FastAPI(
     title="Relax Corner POS API",
     description="Multi-tenant Retail POS & Management System API",
@@ -26,14 +24,27 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS — allow frontend origin
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+cors_origins_raw = os.getenv("CORS_ORIGINS", "*")
+configured_origins = [o.strip() for o in cors_origins_raw.split(",") if o.strip()]
+
+# If wildcard is present, allow all origins
+if "*" in configured_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=configured_origins,
+        allow_origin_regex=r"https://.*\.vercel\.app|http://localhost:\d+",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Register routers under /api/v1
 API_PREFIX = "/api/v1"
