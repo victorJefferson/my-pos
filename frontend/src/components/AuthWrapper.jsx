@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import { Loader2, Store } from 'lucide-react'
-import { setToken } from '../tokenStore'
+import { setToken, setTokenFetcher } from '../tokenStore'
 import { authApi } from '../services/api'
 import StoreSetupWizard from './StoreSetupWizard'
 
@@ -25,8 +25,11 @@ export default function AuthWrapper({ children }) {
     if (isLoaded && !isSignedIn) {
       localStorage.removeItem('rc_tenant_id')
       localStorage.removeItem('rc_store_name')
+    } else if (isLoaded && isSignedIn) {
+      // Register token fetcher so tokenStore can refresh on demand
+      setTokenFetcher((opts) => getToken(opts))
     }
-  }, [isLoaded, isSignedIn])
+  }, [isLoaded, isSignedIn, getToken])
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return

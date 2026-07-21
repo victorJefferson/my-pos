@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { getToken } from '../tokenStore'
+import { getToken, getFreshToken } from '../tokenStore'
 
 let rawBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1').trim()
 if (rawBase.endsWith('/')) rawBase = rawBase.slice(0, -1)
@@ -17,14 +17,38 @@ const api = axios.create({
   timeout: 15000,
 })
 
-// ── Auth interceptor — attach Clerk token to every request ────────────────────
-api.interceptors.request.use((config) => {
-  const token = getToken()
+// ── Request interceptor — ensure active token on every request ─────────────────
+api.interceptors.request.use(async (config) => {
+  let token = getToken()
+  if (!token) {
+    token = await getFreshToken()
+  }
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
   return config
 })
+
+// ── Response interceptor — auto-retry on 401 with force-refreshed Clerk token ─
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      originalRequest._retry = true
+      try {
+        const freshToken = await getFreshToken({ skipCache: true })
+        if (freshToken) {
+          originalRequest.headers.Authorization = `Bearer ${freshToken}`
+          return api(originalRequest)
+        }
+      } catch (retryErr) {
+        console.error('[Appa Software] Auto-retry after 401 failed:', retryErr)
+      }
+    }
+    return Promise.reject(error)
+  }
+)
 
 // ── Products ──────────────────────────────────────────────────────────────────
 export const productsApi = {
