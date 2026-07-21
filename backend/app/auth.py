@@ -29,30 +29,26 @@ _EXPLICIT_JWKS_URL = os.getenv("CLERK_JWKS_URL", "")
 _jwks_cache: Optional[dict] = None
 
 
-def _derive_jwks_url() -> str:
-    """Derive the Clerk JWKS URL from the publishable key.
+DEFAULT_CLERK_JWKS_URL = "https://set-bluegill-21.clerk.accounts.dev/.well-known/jwks.json"
 
-    Clerk publishable keys look like: pk_test_<base64payload>
-    The base64 payload decodes to the frontend API host (e.g. vocal-bass-12.clerk.accounts.dev$)
-    """
+
+def _derive_jwks_url() -> str:
+    """Derive the Clerk JWKS URL from the publishable key or fallback to default."""
     if _EXPLICIT_JWKS_URL:
         return _EXPLICIT_JWKS_URL
 
-    if not CLERK_PUBLISHABLE_KEY:
-        return ""
+    if CLERK_PUBLISHABLE_KEY:
+        try:
+            parts = CLERK_PUBLISHABLE_KEY.split("_", 2)
+            if len(parts) == 3:
+                b64_payload = parts[2]
+                b64_payload += "=" * (4 - len(b64_payload) % 4)
+                decoded = base64.b64decode(b64_payload).decode("utf-8").rstrip("$")
+                return f"https://{decoded}/.well-known/jwks.json"
+        except Exception as e:
+            print(f"[Auth] Could not decode CLERK_PUBLISHABLE_KEY: {e}")
 
-    try:
-        # Format: pk_test_<b64> or pk_live_<b64>
-        parts = CLERK_PUBLISHABLE_KEY.split("_", 2)
-        if len(parts) != 3:
-            return ""
-        b64_payload = parts[2]
-        # Add padding if needed
-        b64_payload += "=" * (4 - len(b64_payload) % 4)
-        decoded = base64.b64decode(b64_payload).decode("utf-8").rstrip("$")
-        return f"https://{decoded}/.well-known/jwks.json"
-    except Exception:
-        return ""
+    return DEFAULT_CLERK_JWKS_URL
 
 
 def _fetch_jwks() -> dict:
@@ -109,10 +105,12 @@ def verify_clerk_token(token: str) -> dict:
         return payload
 
     except JWTError as e:
+        print(f"[Auth Error] JWTError: {e}")
         raise HTTPException(status_code=401, detail=f"Invalid session token: {e}")
     except HTTPException:
         raise
     except Exception as e:
+        print(f"[Auth Error] Unexpected Exception: {e}")
         raise HTTPException(status_code=401, detail=f"Auth error: {e}")
 
 
