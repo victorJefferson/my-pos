@@ -47,9 +47,9 @@ def _recalculate_sales_if_needed(sales: List[Sale], db: Session):
     for sale in sales:
         s_items = items_by_sale.get(sale.id, [])
         if s_items:
-            tot = sum(si.total_price for si in s_items)
+            tot = sum((si.total_price if si.total_price > 0 else (si.unit_selling_price * si.quantity)) for si in s_items)
             cost = sum(si.unit_cost_price * si.quantity for si in s_items)
-            prof = sum(si.total_profit for si in s_items)
+            prof = sum((si.total_profit if si.total_profit != 0 else ((si.unit_selling_price - si.unit_cost_price) * si.quantity)) for si in s_items)
             if sale.total_amount != tot or sale.total_cost != cost or sale.total_profit != prof:
                 sale.total_amount = tot
                 sale.total_cost = cost
@@ -248,8 +248,8 @@ def get_summary(
                 "profit": Decimal("0"),
             }
         sold_agg[si.product_id]["quantity"] += si.quantity
-        sold_agg[si.product_id]["revenue"] += si.total_price
-        sold_agg[si.product_id]["profit"] += si.total_profit
+        sold_agg[si.product_id]["revenue"] += (si.total_price if si.total_price > 0 else (si.unit_selling_price * si.quantity))
+        sold_agg[si.product_id]["profit"] += (si.total_profit if si.total_profit != 0 else ((si.unit_selling_price - si.unit_cost_price) * si.quantity))
 
     # Top 5 by quantity
     top_sold_sorted = sorted(sold_agg.values(), key=lambda x: x["quantity"], reverse=True)[:5]

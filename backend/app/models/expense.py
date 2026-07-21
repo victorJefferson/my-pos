@@ -15,5 +15,6 @@ class Expense(SQLModel, table=True):
     amount: Decimal = Field(decimal_places=2, max_digits=12)
     payment_mode: PaymentMode = Field(default=PaymentMode.CASH)
     description: Optional[str] = Field(default=None)
+    account_id: Optional[uuid.UUID] = Field(default=None, foreign_key="accounts.id", index=True)
     user_id: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)

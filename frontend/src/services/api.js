@@ -121,6 +121,22 @@ export const expensesApi = {
     api.delete(`/expenses/${id}`, { params: { tenant_id: getTenantId() } }),
 }
 
+// ── Accounts ──────────────────────────────────────────────────────────────────
+export const accountsApi = {
+  list: () => 
+    api.get('/accounts/', { params: { tenant_id: getTenantId() } }),
+  create: (data) =>
+    api.post('/accounts/', data, { params: { tenant_id: getTenantId() } }),
+  update: (id, data) =>
+    api.put(`/accounts/${id}`, data, { params: { tenant_id: getTenantId() } }),
+  delete: (id) =>
+    api.delete(`/accounts/${id}`, { params: { tenant_id: getTenantId() } }),
+  transfer: (data) =>
+    api.post('/accounts/transfer', data, { params: { tenant_id: getTenantId() } }),
+  deposit: (data) =>
+    api.post('/accounts/deposit', data, { params: { tenant_id: getTenantId() } }),
+}
+
 // ── Analytics ─────────────────────────────────────────────────────────────────
 export const analyticsApi = {
   summary: (targetDate = null) =>

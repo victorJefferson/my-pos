@@ -400,7 +400,7 @@ export default function TransactionsPage() {
                             {/* Line total */}
                             <div className="text-right shrink-0">
                               <p className="text-sm font-bold text-slate-800 dark:text-white">
-                                ₹{parseFloat(item.total_price).toFixed(2)}
+                                ₹{(parseFloat(item.total_price) > 0 ? parseFloat(item.total_price) : (parseFloat(item.unit_selling_price || 0) * (item.quantity || 1))).toFixed(2)}
                               </p>
                             </div>
                           </div>

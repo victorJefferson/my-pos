@@ -1,14 +1,33 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, ChevronLeft, Flame, TrendingUp, AlertTriangle, AlertCircle, RefreshCw, Loader2, LayoutGrid } from 'lucide-react'
-import { analyticsApi } from '../services/api'
+import { ChevronRight, ChevronLeft, Flame, TrendingUp, AlertTriangle, AlertCircle, RefreshCw, Loader2, LayoutGrid, Wallet, Plus, Edit2, Trash2 } from 'lucide-react'
+import { analyticsApi, accountsApi, expensesApi } from '../services/api'
 import { getCategoryEmoji } from '../utils/categoryUtils'
+import CreateAccountModal from './CreateAccountModal'
+import AddTransactionModal from './AddTransactionModal'
 
 export default function GlobalWidgetsDrawer() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [data, setData] = useState(null)
+  const [accounts, setAccounts] = useState([])
   const [loading, setLoading] = useState(false)
+  
+  const [showCreateAccount, setShowCreateAccount] = useState(false)
+  const [editingAccount, setEditingAccount] = useState(null)
+  const [showAddTransaction, setShowAddTransaction] = useState(false)
+  const [selectedAccountId, setSelectedAccountId] = useState(null)
+
+  const handleDeleteAccount = async (acc) => {
+    if (acc.balance !== 0) return alert('Cannot delete account with non-zero balance.')
+    if (!window.confirm(`Are you sure you want to delete the account "${acc.name}"?`)) return
+    try {
+      await accountsApi.delete(acc.id)
+      loadData()
+    } catch (e) {
+      alert(e.response?.data?.detail || 'Failed to delete account')
+    }
+  }
 
   // Fluid water-like tracking refs
   const buttonRef = useRef(null)
@@ -22,8 +41,12 @@ export default function GlobalWidgetsDrawer() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await analyticsApi.summary()
+      const [res, accRes] = await Promise.all([
+        analyticsApi.summary(),
+        accountsApi.list()
+      ])
       setData(res.data)
+      setAccounts(accRes.data)
     } catch (e) {
       console.error('Failed to fetch widget data:', e)
     } finally {
@@ -174,12 +197,94 @@ export default function GlobalWidgetsDrawer() {
             </button>
           </div>
 
-          {/* Panel Content — 4 Widgets */}
+          {/* Panel Content — Wallets & Widgets */}
           <div className="flex-1 overflow-y-auto p-5 space-y-5">
+            {/* Wallets Section */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-slate-900 dark:text-white font-bold text-sm flex items-center gap-2">
+                  <Wallet size={16} className="text-brand-600 dark:text-brand-400" />
+                  Accounts & Wallets
+                </h3>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                {loading && accounts.length === 0 ? (
+                  <>
+                    {[1, 2].map(i => (
+                      <div key={i} className="glass-card p-3 h-24 animate-pulse flex flex-col justify-between">
+                        <div className="w-1/2 h-3 bg-slate-200 dark:bg-white/10 rounded"></div>
+                        <div className="w-2/3 h-6 bg-slate-200 dark:bg-white/10 rounded mt-2"></div>
+                        <div className="flex gap-1 mt-2">
+                          <div className="w-10 h-4 bg-slate-200 dark:bg-white/10 rounded"></div>
+                          <div className="w-10 h-4 bg-slate-200 dark:bg-white/10 rounded"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    {accounts.map(acc => (
+                      <div
+                        key={acc.id}
+                        onClick={() => { setSelectedAccountId(acc.id); setShowAddTransaction(true) }}
+                        className="glass-card p-3 cursor-pointer hover:border-brand-500/40 hover:shadow-lg dark:hover:border-brand-400/40 transition-all active:scale-[0.98]"
+                      >
+                        <div className="flex justify-between items-start">
+                          <p className="text-xs text-slate-500 dark:text-white/40 font-medium truncate">{acc.name}</p>
+                          <div className="flex gap-2">
+                            <button onClick={(e) => { e.stopPropagation(); setEditingAccount(acc); setShowCreateAccount(true); }} className="text-slate-400 hover:text-brand-500 transition-colors"><Edit2 size={12} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); handleDeleteAccount(acc); }} disabled={acc.balance != 0} className="text-slate-400 hover:text-red-500 transition-colors disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"><Trash2 size={12} /></button>
+                          </div>
+                        </div>
+                        <p className="text-lg font-bold text-slate-900 dark:text-white mt-1 mb-2">₹{Number(acc.balance).toFixed(0)}</p>
+                        <div className="flex gap-1">
+                          {acc.payment_modes.map(mode => (
+                            <span key={mode} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/5 font-bold text-slate-500 dark:text-white/40">
+                              {mode === 'CASH' ? '💵' : mode === 'UPI' ? '📱' : '💳'} {mode}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <div
+                      onClick={() => setShowCreateAccount(true)}
+                      className="glass-card p-3 flex flex-col items-center justify-center cursor-pointer border-dashed border-2 hover:border-brand-500/40 hover:bg-brand-50/50 dark:hover:border-brand-400/40 dark:hover:bg-brand-900/10 transition-all text-slate-400 hover:text-brand-600 dark:text-white/30 dark:hover:text-brand-400 group h-full min-h-[96px]"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center mb-2 group-hover:bg-brand-100 dark:group-hover:bg-brand-900/40 transition-colors">
+                        <Plus size={16} />
+                      </div>
+                      <span className="text-xs font-bold">Add Account</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
             {loading && !data ? (
-              <div className="flex flex-col items-center justify-center h-64 gap-2 text-slate-400 dark:text-white/40">
-                <Loader2 className="animate-spin text-brand-600 dark:text-brand-400" size={28} />
-                <p className="text-xs font-medium">Loading store widgets...</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="glass-card p-4 flex flex-col h-48 animate-pulse">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200 dark:border-white/5">
+                      <div className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-white/10 shrink-0"></div>
+                      <div className="flex-1 space-y-1.5">
+                        <div className="w-1/2 h-3 bg-slate-200 dark:bg-white/10 rounded"></div>
+                        <div className="w-1/3 h-2 bg-slate-200 dark:bg-white/10 rounded"></div>
+                      </div>
+                    </div>
+                    <div className="space-y-3 flex-1 mt-2">
+                      {[1, 2, 3].map(j => (
+                        <div key={j} className="flex justify-between items-center">
+                          <div className="flex items-center gap-2 flex-1">
+                            <div className="w-4 h-3 bg-slate-200 dark:bg-white/10 rounded"></div>
+                            <div className="w-3/4 h-3 bg-slate-200 dark:bg-white/10 rounded"></div>
+                          </div>
+                          <div className="w-1/4 h-3 bg-slate-200 dark:bg-white/10 rounded"></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -357,6 +462,33 @@ export default function GlobalWidgetsDrawer() {
           </div>
         </div>
       </div>
+      
+      {/* Modals */}
+      {showCreateAccount && (
+        <CreateAccountModal
+          initialData={editingAccount}
+          onSave={async (payload) => {
+            if (editingAccount) {
+              await accountsApi.update(editingAccount.id, payload)
+            } else {
+              await accountsApi.create(payload)
+            }
+            loadData()
+          }}
+          onClose={() => { setShowCreateAccount(false); setEditingAccount(null); }}
+        />
+      )}
+      {showAddTransaction && (
+        <AddTransactionModal
+          initialAccountId={selectedAccountId}
+          accounts={accounts}
+          categories={[]}
+          onSaveExpense={async (payload) => { await expensesApi.create(payload); loadData() }}
+          onSaveTransfer={async (payload) => { await accountsApi.transfer(payload); loadData() }}
+          onSaveDeposit={async (payload) => { await accountsApi.deposit(payload); loadData() }}
+          onClose={() => { setShowAddTransaction(false); setSelectedAccountId(null) }}
+        />
+      )}
     </>
   )
 }

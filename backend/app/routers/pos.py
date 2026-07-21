@@ -10,6 +10,8 @@ from app.auth import get_current_user
 from app.models.product import Product
 from app.models.sale import Sale, SaleItem, PaymentMode
 from app.models.expense import Expense
+from app.models.account import Account
+from app.models.wallet_transaction import WalletTransaction, TransactionType
 from app.schemas.sale import SaleCreate, SaleRead, SaleItemRead, SaleItemQtyUpdate
 
 router = APIRouter(prefix="/pos", tags=["pos"])
@@ -111,6 +113,23 @@ def checkout(payload: SaleCreate, db: Session = Depends(get_session)):
     db.commit()
     db.refresh(sale)
 
+    # Automatically credit the appropriate account if one is linked to this payment mode
+    accounts = db.exec(select(Account).where(Account.tenant_id == payload.tenant_id)).all()
+    for acc in accounts:
+        if payload.payment_mode in acc.payment_modes:
+            acc.balance += sale.total_amount
+            tx = WalletTransaction(
+                tenant_id=payload.tenant_id,
+                account_id=acc.id,
+                type=TransactionType.SALE,
+                amount=sale.total_amount,
+                reference_id=sale.id
+            )
+            db.add(acc)
+            db.add(tx)
+            db.commit()
+            break
+
     # Build response
     return SaleRead(
         id=sale.id,
@@ -163,9 +182,9 @@ def list_sales(
             prods = db.exec(select(Product).where(Product.id.in_(product_ids))).all()
             products_map = {p.id: p.name for p in prods}
 
-        calc_total = sum(si.total_price for si in items)
+        calc_total = sum((si.total_price if si.total_price > 0 else (si.unit_selling_price * si.quantity)) for si in items)
         calc_cost = sum(si.unit_cost_price * si.quantity for si in items)
-        calc_profit = sum(si.total_profit for si in items)
+        calc_profit = sum((si.total_profit if si.total_profit != 0 else ((si.unit_selling_price - si.unit_cost_price) * si.quantity)) for si in items)
 
         if sale.total_amount != calc_total or sale.total_cost != calc_cost or sale.total_profit != calc_profit:
             sale.total_amount = calc_total
@@ -227,6 +246,21 @@ def delete_sale(
         db.delete(item)
 
     db.flush()   # commit item deletions first so FK constraint is satisfied
+
+    # Revert wallet transaction if it exists
+    wallet_tx = db.exec(
+        select(WalletTransaction).where(
+            WalletTransaction.reference_id == sale_id,
+            WalletTransaction.type == TransactionType.SALE
+        )
+    ).first()
+    if wallet_tx:
+        acc = db.exec(select(Account).where(Account.id == wallet_tx.account_id)).first()
+        if acc:
+            acc.balance -= wallet_tx.amount
+            db.add(acc)
+        db.delete(wallet_tx)
+
     db.delete(sale)
     db.commit()
 
@@ -265,13 +299,40 @@ def delete_sale_item(
     remaining = db.exec(select(SaleItem).where(SaleItem.sale_id == sale_id)).all()
     if not remaining:
         # Last item removed — delete the whole sale
+        wallet_tx = db.exec(
+            select(WalletTransaction).where(
+                WalletTransaction.reference_id == sale_id,
+                WalletTransaction.type == TransactionType.SALE
+            )
+        ).first()
+        if wallet_tx:
+            acc = db.exec(select(Account).where(Account.id == wallet_tx.account_id)).first()
+            if acc:
+                acc.balance -= wallet_tx.amount
+                db.add(acc)
+            db.delete(wallet_tx)
         db.delete(sale)
     else:
         # Recalculate sale totals from remaining items
+        old_total = sale.total_amount
         sale.total_amount = sum(si.total_price for si in remaining)
         sale.total_cost = sum(si.unit_cost_price * si.quantity for si in remaining)
         sale.total_profit = sum(si.total_profit for si in remaining)
         db.add(sale)
+
+        diff = old_total - sale.total_amount
+        if diff != 0:
+            wallet_tx = db.exec(select(WalletTransaction).where(
+                WalletTransaction.reference_id == sale_id,
+                WalletTransaction.type == TransactionType.SALE
+            )).first()
+            if wallet_tx:
+                acc = db.exec(select(Account).where(Account.id == wallet_tx.account_id)).first()
+                if acc:
+                    acc.balance -= diff
+                    db.add(acc)
+                wallet_tx.amount = sale.total_amount
+                db.add(wallet_tx)
 
     db.commit()
 
@@ -325,10 +386,26 @@ def update_sale_item_qty(
 
     # Re-query ALL items fresh from DB to get reliable values (avoids identity-map stale reads)
     all_items = db.exec(select(SaleItem).where(SaleItem.sale_id == sale_id)).all()
-    sale.total_amount = sum(si.total_price for si in all_items)
+    old_total = sale.total_amount
+    sale.total_amount = sum((si.total_price if si.total_price > 0 else (si.unit_selling_price * si.quantity)) for si in all_items)
     sale.total_cost   = sum(si.unit_cost_price * si.quantity for si in all_items)
-    sale.total_profit = sum(si.total_profit for si in all_items)
+    sale.total_profit = sum((si.total_profit if si.total_profit != 0 else ((si.unit_selling_price - si.unit_cost_price) * si.quantity)) for si in all_items)
     db.add(sale)
+
+    diff = sale.total_amount - old_total
+    if diff != 0:
+        wallet_tx = db.exec(select(WalletTransaction).where(
+            WalletTransaction.reference_id == sale_id,
+            WalletTransaction.type == TransactionType.SALE
+        )).first()
+        if wallet_tx:
+            acc = db.exec(select(Account).where(Account.id == wallet_tx.account_id)).first()
+            if acc:
+                acc.balance += diff
+                db.add(acc)
+            wallet_tx.amount = sale.total_amount
+            db.add(wallet_tx)
+
     db.commit()
     db.refresh(sale)
 
@@ -399,6 +476,15 @@ def purge_transactions(
         for ex in expenses:
             db.delete(ex)
         db.flush()
+
+    # Also purge all wallet transactions and zero out accounts to maintain data integrity
+    wallet_txs = db.exec(select(WalletTransaction).where(WalletTransaction.tenant_id == tenant_id)).all()
+    for tx in wallet_txs:
+        db.delete(tx)
+    accounts = db.exec(select(Account).where(Account.tenant_id == tenant_id)).all()
+    for acc in accounts:
+        acc.balance = Decimal("0.0")
+        db.add(acc)
 
     db.commit()
 

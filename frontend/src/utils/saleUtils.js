@@ -16,8 +16,12 @@
  */
 export function computeSaleTotals(sale) {
   const items = sale?.items ?? []
-  const total  = items.reduce((s, i) => s + parseFloat(i.total_price ?? 0), 0)
-  const cost   = items.reduce((s, i) => s + parseFloat(i.unit_cost_price ?? 0) * (i.quantity ?? 1), 0)
+  const total = items.reduce((s, i) => {
+    const fromItem = parseFloat(i.total_price ?? 0)
+    const fallback = parseFloat(i.unit_selling_price ?? 0) * (i.quantity ?? 1)
+    return s + (fromItem > 0 ? fromItem : fallback)
+  }, 0)
+  const cost = items.reduce((s, i) => s + parseFloat(i.unit_cost_price ?? 0) * (i.quantity ?? 1), 0)
   const profit = total - cost
   const margin = total > 0 ? (profit / total) * 100 : 0
   return { total, cost, profit, margin }

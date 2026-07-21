@@ -9,6 +9,8 @@ from sqlmodel import select
 from app.database import get_session
 from app.auth import get_current_user
 from app.models.expense import Expense
+from app.models.account import Account
+from app.models.wallet_transaction import WalletTransaction, TransactionType
 from app.schemas.expense import ExpenseCreate, ExpenseRead
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
@@ -22,6 +24,7 @@ def _to_read(e: Expense) -> ExpenseRead:
         amount=float(e.amount),
         payment_mode=e.payment_mode,
         description=e.description,
+        account_id=e.account_id,
         created_at=e.created_at,
     )
 
@@ -45,8 +48,25 @@ def create_expense(
         amount=payload.amount,
         payment_mode=payload.payment_mode,
         description=payload.description,
+        account_id=payload.account_id
     )
     db.add(exp)
+    db.flush()
+
+    if payload.account_id:
+        acc = db.exec(select(Account).where(Account.id == payload.account_id)).first()
+        if acc:
+            acc.balance -= payload.amount
+            db.add(acc)
+            tx = WalletTransaction(
+                tenant_id=tenant_id,
+                account_id=acc.id,
+                type=TransactionType.EXPENSE,
+                amount=payload.amount,
+                reference_id=exp.id
+            )
+            db.add(tx)
+
     db.commit()
     db.refresh(exp)
     return _to_read(exp)
@@ -97,5 +117,18 @@ def delete_expense(
     exp = db.exec(select(Expense).where(Expense.id == expense_id, Expense.tenant_id == tenant_id)).first()
     if not exp:
         raise HTTPException(status_code=404, detail="Expense not found")
+
+    wallet_tx = db.exec(select(WalletTransaction).where(
+        WalletTransaction.reference_id == expense_id,
+        WalletTransaction.type == TransactionType.EXPENSE
+    )).first()
+
+    if wallet_tx:
+        acc = db.exec(select(Account).where(Account.id == wallet_tx.account_id)).first()
+        if acc:
+            acc.balance += wallet_tx.amount
+            db.add(acc)
+        db.delete(wallet_tx)
+
     db.delete(exp)
     db.commit()
