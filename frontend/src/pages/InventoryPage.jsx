@@ -182,13 +182,11 @@ export default function InventoryPage() {
       const params = { active_only: false }
       if (search) params.search = search
       if (activeCategory !== 'All') params.category = activeCategory
-      if (lowStockOnly) params.low_stock = true
-      if (outOfStockOnly) params.out_of_stock = true
       const r = await productsApi.list(params)
       setProducts(r.data)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
-  }, [search, activeCategory, lowStockOnly, outOfStockOnly])
+  }, [search, activeCategory])
 
   useEffect(() => { loadCategories() }, [])
   useEffect(() => { loadProducts() }, [loadProducts])
@@ -285,7 +283,9 @@ export default function InventoryPage() {
             <Package size={20} className="text-brand-600 dark:text-brand-400" />
             Inventory
           </h1>
-          <p className="text-slate-500 dark:text-white/40 text-xs mt-0.5">{products.length} products · {lowStockCount} low stock · {outOfStockCount} out of stock</p>
+          <p className="text-slate-500 dark:text-white/40 text-xs mt-0.5">
+            {filteredProducts.length === products.length ? `${products.length} products` : `${filteredProducts.length} of ${products.length} products`} · {lowStockCount} low stock · {outOfStockCount} out of stock
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={loadProducts} className="btn-ghost flex items-center gap-2 text-sm" title="Refresh">
