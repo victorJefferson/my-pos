@@ -40,10 +40,11 @@ def list_products(
     category: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
     low_stock: Optional[bool] = Query(None),
+    out_of_stock: Optional[bool] = Query(None),
     active_only: bool = Query(True),
     db: Session = Depends(get_session),
 ):
-    """List products with optional search, category filter, low-stock filter."""
+    """List products with optional search, category filter, low-stock filter, out-of-stock filter."""
     query = select(Product).where(Product.tenant_id == tenant_id)
 
     if active_only:
@@ -56,8 +57,12 @@ def list_products(
         pattern = f"%{search}%"
         query = query.where(Product.name.ilike(pattern))
 
-    if low_stock is True:
+    if low_stock is True and out_of_stock is True:
         query = query.where(Product.stock_quantity <= 10)
+    elif low_stock is True:
+        query = query.where(Product.stock_quantity > 0, Product.stock_quantity <= 10)
+    elif out_of_stock is True:
+        query = query.where(Product.stock_quantity == 0)
 
     products = db.exec(query.order_by(Product.category, Product.name)).all()
     return [_to_read(p) for p in products]

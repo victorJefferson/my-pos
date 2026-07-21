@@ -163,6 +163,7 @@ export default function InventoryPage() {
   const [activeCategory, setActiveCategory] = useState('All')
   const [search, setSearch] = useState('')
   const [lowStockOnly, setLowStockOnly] = useState(false)
+  const [outOfStockOnly, setOutOfStockOnly] = useState(false)
   const [loading, setLoading] = useState(false)
   const [modal, setModal] = useState(null)                     // null | 'add' | {product}
   const [showImportModal, setShowImportModal] = useState(false)
@@ -182,11 +183,12 @@ export default function InventoryPage() {
       if (search) params.search = search
       if (activeCategory !== 'All') params.category = activeCategory
       if (lowStockOnly) params.low_stock = true
+      if (outOfStockOnly) params.out_of_stock = true
       const r = await productsApi.list(params)
       setProducts(r.data)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
-  }, [search, activeCategory, lowStockOnly])
+  }, [search, activeCategory, lowStockOnly, outOfStockOnly])
 
   useEffect(() => { loadCategories() }, [])
   useEffect(() => { loadProducts() }, [loadProducts])
@@ -244,7 +246,13 @@ export default function InventoryPage() {
   }
 
   const filteredProducts = products.filter((p) => {
-    if (lowStockOnly && p.stock_quantity > 10) return false
+    if (lowStockOnly && outOfStockOnly) {
+      if (p.stock_quantity > 10) return false
+    } else if (lowStockOnly) {
+      if (p.stock_quantity <= 0 || p.stock_quantity > 10) return false
+    } else if (outOfStockOnly) {
+      if (p.stock_quantity !== 0) return false
+    }
     return true
   })
 
@@ -265,7 +273,8 @@ export default function InventoryPage() {
       : <ChevronDown size={12} className="text-brand-600 dark:text-brand-400" />
   }
 
-  const lowStockCount = products.filter(p => p.stock_quantity <= 10 && p.is_active).length
+  const lowStockCount = products.filter(p => p.stock_quantity > 0 && p.stock_quantity <= 10 && p.is_active).length
+  const outOfStockCount = products.filter(p => p.stock_quantity === 0 && p.is_active).length
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200">
@@ -276,7 +285,7 @@ export default function InventoryPage() {
             <Package size={20} className="text-brand-600 dark:text-brand-400" />
             Inventory
           </h1>
-          <p className="text-slate-500 dark:text-white/40 text-xs mt-0.5">{products.length} products · {lowStockCount} low stock</p>
+          <p className="text-slate-500 dark:text-white/40 text-xs mt-0.5">{products.length} products · {lowStockCount} low stock · {outOfStockCount} out of stock</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={loadProducts} className="btn-ghost flex items-center gap-2 text-sm" title="Refresh">
@@ -329,12 +338,41 @@ export default function InventoryPage() {
         {/* Low stock toggle */}
         <button
           onClick={() => setLowStockOnly(!lowStockOnly)}
-          className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border transition-all
+          className={`group relative flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border transition-all select-none
             ${lowStockOnly
-              ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/30 dark:border-red-500/40 dark:text-red-300'
+              ? 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/30 dark:border-amber-500/40 dark:text-amber-300 font-semibold shadow-sm'
               : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:bg-white/5 dark:border-white/10 dark:text-white/50 dark:hover:text-white dark:hover:bg-white/10'}`}>
           <AlertTriangle size={12} />
-          Low Stock Only
+          <span>Low Stock ({lowStockCount})</span>
+          {lowStockOnly && (
+            <span
+              onClick={(e) => { e.stopPropagation(); setLowStockOnly(false) }}
+              className="ml-1 -mr-1 p-0.5 rounded-full hover:bg-amber-200/70 dark:hover:bg-amber-800/60 text-amber-600 dark:text-amber-300 transition-colors flex items-center justify-center"
+              title="Remove low stock filter"
+            >
+              <X size={13} />
+            </span>
+          )}
+        </button>
+
+        {/* Out of stock toggle */}
+        <button
+          onClick={() => setOutOfStockOnly(!outOfStockOnly)}
+          className={`group relative flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border transition-all select-none
+            ${outOfStockOnly
+              ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/30 dark:border-red-500/40 dark:text-red-300 font-semibold shadow-sm'
+              : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:bg-white/5 dark:border-white/10 dark:text-white/50 dark:hover:text-white dark:hover:bg-white/10'}`}>
+          <AlertTriangle size={12} />
+          <span>Out of Stock ({outOfStockCount})</span>
+          {outOfStockOnly && (
+            <span
+              onClick={(e) => { e.stopPropagation(); setOutOfStockOnly(false) }}
+              className="ml-1 -mr-1 p-0.5 rounded-full hover:bg-red-200/70 dark:hover:bg-red-800/60 text-red-600 dark:text-red-300 transition-colors flex items-center justify-center"
+              title="Remove out of stock filter"
+            >
+              <X size={13} />
+            </span>
+          )}
         </button>
       </div>
 
