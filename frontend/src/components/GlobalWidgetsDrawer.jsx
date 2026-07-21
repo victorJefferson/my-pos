@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ChevronRight, ChevronLeft, Flame, TrendingUp, AlertTriangle, AlertCircle, RefreshCw, Loader2 } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Flame, TrendingUp, AlertTriangle, AlertCircle, RefreshCw, Loader2, LayoutGrid } from 'lucide-react'
 import { analyticsApi } from '../services/api'
 import { getCategoryEmoji } from '../utils/categoryUtils'
 
@@ -43,24 +43,25 @@ export default function GlobalWidgetsDrawer() {
 
   return (
     <>
-      {/* ── Sleek Floating Push Button (Visible on all screens) ────────────────── */}
+      {/* ── Sleek Floating Action Pill (Visible on all screens) ────────────────── */}
       <button
         onClick={() => setOpen((prev) => !prev)}
         className={`
-          fixed right-0 top-1/2 -translate-y-1/2 z-40
-          bg-gradient-to-b from-brand-600 to-indigo-700 hover:from-brand-500 hover:to-indigo-600
-          text-white shadow-2xl rounded-l-2xl border-l border-y border-brand-400/30
-          transition-all duration-300 flex items-center cursor-pointer group
-          ${open ? 'translate-x-full opacity-0 pointer-events-none' : 'translate-x-0 opacity-100 px-2 py-4.5'}
+          fixed bottom-6 right-6 z-40
+          flex items-center gap-2.5 px-4 py-2.5 rounded-full
+          bg-white dark:bg-[#18182a] text-slate-800 dark:text-white
+          border border-slate-200 dark:border-white/10
+          shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95
+          transition-all duration-200 cursor-pointer font-semibold text-xs
+          ${open ? 'opacity-0 pointer-events-none scale-90' : 'opacity-100 scale-100'}
         `}
-        title="View Widgets"
+        title="View Store Widgets"
       >
-        <div className="flex flex-col items-center gap-2">
-          <ChevronLeft size={18} className="group-hover:-translate-x-0.5 transition-transform" />
-          <span className="text-[10px] font-extrabold tracking-wider uppercase [writing-mode:vertical-rl] rotate-180">
-            Widgets
-          </span>
+        <div className="w-6 h-6 rounded-lg bg-brand-500/15 border border-brand-500/30 flex items-center justify-center text-brand-600 dark:text-brand-400">
+          <LayoutGrid size={14} />
         </div>
+        <span>Store Widgets</span>
+        <ChevronLeft size={14} className="text-slate-400 dark:text-white/40" />
       </button>
 
       {/* ── Slide-Over Panel Container ───────────────────────────────────────────── */}

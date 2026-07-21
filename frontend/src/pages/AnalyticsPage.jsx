@@ -290,6 +290,19 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
+      {/* Today's Payment Mode Cards */}
+      {today && (
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { label: 'Cash Sales', amount: today.cash_amount, icon: Banknote, color: 'green' },
+            { label: 'UPI Sales', amount: today.upi_amount, icon: Smartphone, color: 'blue' },
+            { label: 'Card Sales', amount: today.card_amount, icon: CreditCard, color: 'brand' },
+          ].map(({ label, amount, icon, color }) => (
+            <StatCard key={label} label={label} value={INR(amount)} icon={icon} color={color} />
+          ))}
+        </div>
+      )}
+
       {/* Export Report Modal */}
       {showExportModal && (
         <ExportReportModal onClose={() => setShowExportModal(false)} />
