@@ -4,6 +4,7 @@ import { productsApi, posApi } from '../services/api'
 import { TENANT_ID } from '../services/api'
 import { usePOSKeyboard } from '../hooks/usePOSKeyboard'
 import ProductCard from '../components/ProductCard'
+import Skeleton from '../components/Skeleton'
 import CartSidebar from '../components/CartSidebar'
 import PriceModal from '../components/PriceModal'
 import PaymentModal from '../components/PaymentModal'
@@ -267,9 +268,14 @@ export default function POSPage() {
         {/* Product grid */}
         <div className="flex-1 overflow-y-auto px-5 py-3">
           {loading ? (
-            <div className="flex items-center justify-center h-40 text-slate-400 dark:text-white/30 gap-2">
-              <Loader2 className="animate-spin text-brand-600 dark:text-brand-400" size={20} />
-              <span className="text-sm">Loading inventory...</span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-2.5">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map((i) => (
+                <div key={i} className="product-card flex flex-col items-center justify-center gap-2">
+                  <Skeleton className="w-8 h-8 rounded-full" />
+                  <Skeleton className="w-16 h-3 rounded" />
+                  <Skeleton className="w-12 h-4 rounded mt-1" />
+                </div>
+              ))}
             </div>
           ) : displayedProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-white/30 gap-2 text-center p-6">

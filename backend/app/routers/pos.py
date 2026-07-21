@@ -1,7 +1,8 @@
 import uuid
 from decimal import Decimal
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from typing import List, Optional
+from datetime import datetime, date
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlmodel import select, func
 
@@ -159,28 +160,50 @@ def checkout(payload: SaleCreate, db: Session = Depends(get_session)):
 @router.get("/sales", response_model=List[SaleRead], dependencies=[Depends(get_current_user)])
 def list_sales(
     tenant_id: uuid.UUID,
+    target_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_session),
 ):
     """List recent sales for a tenant, including product names on each item."""
-    sales = db.exec(
-        select(Sale)
-        .where(Sale.tenant_id == tenant_id)
-        .order_by(Sale.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-    ).all()
+    query = select(Sale).where(Sale.tenant_id == tenant_id)
+
+    if target_date:
+        day = datetime.strptime(target_date, "%Y-%m-%d").date()
+        day_start = datetime.combine(day, datetime.min.time())
+        day_end = datetime.combine(day, datetime.max.time())
+        query = query.where(Sale.created_at >= day_start, Sale.created_at <= day_end)
+        query = query.order_by(Sale.created_at.desc())
+        # When a specific date is requested, return all transactions for that date without the 50 limit
+    else:
+        query = query.order_by(Sale.created_at.desc()).offset(skip).limit(limit)
+
+    sales = db.exec(query).all()
+
+    if not sales:
+        return []
+
+    # Fetch all items for these sales in one query
+    sale_ids = [s.id for s in sales]
+    all_items = db.exec(select(SaleItem).where(SaleItem.sale_id.in_(sale_ids))).all()
+    
+    # Group items by sale
+    items_by_sale = {}
+    for item in all_items:
+        items_by_sale.setdefault(item.sale_id, []).append(item)
+
+    # Fetch all products for these items in one query
+    product_ids = list({si.product_id for si in all_items})
+    products_map = {}
+    if product_ids:
+        prods = db.exec(select(Product).where(Product.id.in_(product_ids))).all()
+        products_map = {p.id: p.name for p in prods}
 
     result = []
+    need_commit = False
+
     for sale in sales:
-        items = db.exec(select(SaleItem).where(SaleItem.sale_id == sale.id)).all()
-        # Fetch product names in bulk for this sale's items
-        product_ids = [si.product_id for si in items]
-        products_map = {}
-        if product_ids:
-            prods = db.exec(select(Product).where(Product.id.in_(product_ids))).all()
-            products_map = {p.id: p.name for p in prods}
+        items = items_by_sale.get(sale.id, [])
 
         calc_total = sum((si.total_price if si.total_price > 0 else (si.unit_selling_price * si.quantity)) for si in items)
         calc_cost = sum(si.unit_cost_price * si.quantity for si in items)
@@ -191,7 +214,7 @@ def list_sales(
             sale.total_cost = calc_cost
             sale.total_profit = calc_profit
             db.add(sale)
-            db.commit()
+            need_commit = True
 
         result.append(
             SaleRead(
@@ -219,6 +242,10 @@ def list_sales(
                 ],
             )
         )
+
+    if need_commit:
+        db.commit()
+
     return result
 
 

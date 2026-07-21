@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Receipt, RefreshCw, Loader2, Clock, Trash2, Edit2, Check, X,
-  ChevronDown, ChevronUp, Search, Filter, AlertTriangle,
+  ChevronDown, ChevronUp, Search, Filter, AlertTriangle, Calendar
 } from 'lucide-react'
 import { posApi } from '../services/api'
 import { computeSaleTotals, computeAggregateTotals, computeItemTotals, fmtRupee } from '../utils/saleUtils'
+import Skeleton from '../components/Skeleton'
 
 const PAYMENT_BADGE = {
   CASH: { label: 'Cash',  cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700/40' },
@@ -32,6 +33,11 @@ export default function TransactionsPage() {
   const [sales, setSales] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [targetDate, setTargetDate] = useState(() => {
+    // Default to local today's date in YYYY-MM-DD
+    const d = new Date()
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0]
+  })
   const [filterMode, setFilterMode] = useState('ALL')        // ALL | CASH | UPI | CARD
   const [expandedId, setExpandedId] = useState(null)
   const [deleting, setDeleting] = useState(null)
@@ -41,14 +47,14 @@ export default function TransactionsPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await posApi.recentSales(50)
+      const res = await posApi.recentSales(targetDate || null)
       setSales(res.data)
     } catch (e) {
       console.error(e)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [targetDate])
 
   useEffect(() => { load() }, [load])
 
@@ -83,7 +89,7 @@ export default function TransactionsPage() {
         setExpandedId(null)
       } else {
         // Refresh the sale in the list
-        const res = await posApi.recentSales(50)
+        const res = await posApi.recentSales(targetDate || null)
         setSales(res.data)
       }
     } catch (e) {
@@ -147,17 +153,28 @@ export default function TransactionsPage() {
             Transactions
           </h1>
           <p className="text-slate-500 dark:text-white/40 text-xs mt-0.5">
-            Last {sales.length} sales · Click a row to expand · Hover items to edit
+            {targetDate ? `Transactions for ${new Date(targetDate).toLocaleDateString('en-GB')}` : `Last ${sales.length} sales`} · Click a row to expand
           </p>
         </div>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-600 dark:text-white/60 transition-all active:scale-95"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30" size={14} />
+            <input
+              type="date"
+              className="pl-8 pr-3 py-2 text-sm bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-800 dark:text-white focus:outline-none focus:border-brand-400 w-[140px] transition-colors"
+              value={targetDate}
+              onChange={(e) => setTargetDate(e.target.value)}
+            />
+          </div>
+          <button
+            onClick={load}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-600 dark:text-white/60 transition-all active:scale-95"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
+        </div>
       </div>
 
       {/* ── Stats bar ──────────────────────────────────────────────────────── */}
@@ -165,19 +182,25 @@ export default function TransactionsPage() {
         <div className="flex items-center gap-3">
           <div className="text-center">
             <p className="text-xs text-slate-400 dark:text-white/30 font-medium">Transactions</p>
-            <p className="text-xl font-bold text-slate-900 dark:text-white">{filtered.length}</p>
+            {loading ? <Skeleton className="h-6 w-8 mt-1 mx-auto rounded" /> : (
+              <p className="text-xl font-bold text-slate-900 dark:text-white">{filtered.length}</p>
+            )}
           </div>
           <div className="w-px h-8 bg-slate-200 dark:bg-white/10" />
           <div className="text-center">
             <p className="text-xs text-slate-400 dark:text-white/30 font-medium">Revenue</p>
-            <p className="text-xl font-bold text-brand-600 dark:text-brand-400">₹{totalRevenue.toFixed(2)}</p>
+            {loading ? <Skeleton className="h-6 w-20 mt-1 mx-auto rounded" /> : (
+              <p className="text-xl font-bold text-brand-600 dark:text-brand-400">₹{totalRevenue.toFixed(2)}</p>
+            )}
           </div>
           <div className="w-px h-8 bg-slate-200 dark:bg-white/10" />
           <div className="text-center">
             <p className="text-xs text-slate-400 dark:text-white/30 font-medium">Profit</p>
-            <p className={`text-xl font-bold ${totalProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
-              ₹{totalProfit.toFixed(2)}
-            </p>
+            {loading ? <Skeleton className="h-6 w-20 mt-1 mx-auto rounded" /> : (
+              <p className={`text-xl font-bold ${totalProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+                ₹{totalProfit.toFixed(2)}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -219,10 +242,33 @@ export default function TransactionsPage() {
       {/* ── Transaction List ─────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
         {loading ? (
-          <div className="flex items-center justify-center h-48 gap-3 text-slate-400 dark:text-white/30">
-            <Loader2 size={22} className="animate-spin text-brand-500" />
-            <span className="text-sm">Loading transactions…</span>
-          </div>
+          <>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="rounded-2xl border border-slate-200 dark:border-white/8 bg-white dark:bg-[#111120] px-5 py-4 flex items-center gap-4">
+                <Skeleton className="w-12 h-12 rounded-xl shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <Skeleton className="h-4 w-32 mb-2 rounded" />
+                  <Skeleton className="h-3 w-40 rounded" />
+                </div>
+                <div className="hidden sm:block">
+                  <Skeleton className="h-5 w-8 mx-auto mb-1 rounded" />
+                  <Skeleton className="h-3 w-12 rounded" />
+                </div>
+                <div className="hidden md:block">
+                  <Skeleton className="h-5 w-16 mx-auto mb-1 rounded" />
+                  <Skeleton className="h-3 w-16 rounded" />
+                </div>
+                <div className="text-right shrink-0">
+                  <Skeleton className="h-6 w-20 ml-auto mb-1.5 rounded" />
+                  <Skeleton className="h-4 w-12 ml-auto rounded-full" />
+                </div>
+                <div className="shrink-0 flex items-center gap-1">
+                  <Skeleton className="h-8 w-8 rounded-xl" />
+                  <Skeleton className="h-8 w-8 rounded-xl" />
+                </div>
+              </div>
+            ))}
+          </>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 gap-2 text-slate-400 dark:text-white/30">
             <Receipt size={36} className="opacity-30" />

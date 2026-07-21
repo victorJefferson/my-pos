@@ -13,6 +13,7 @@ import StatCard from '../components/StatCard'
 import ExportReportModal from '../components/ExportReportModal'
 import PurgeDataModal from '../components/PurgeDataModal'
 import { getCategoryEmoji } from '../utils/categoryUtils'
+import Skeleton from '../components/Skeleton'
 
 const INR = (n) => `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 
@@ -60,14 +61,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => { load() }, [targetDate])
 
-  if (loading && !data) {
-    return (
-      <div className="flex items-center justify-center h-full text-slate-400 dark:text-white/30 gap-2">
-        <Loader2 className="animate-spin text-brand-600 dark:text-brand-400" size={24} />
-        <span>Loading analytics...</span>
-      </div>
-    )
-  }
+
 
   const today = data?.today
   const pb = data?.payment_breakdown
@@ -124,91 +118,127 @@ export default function AnalyticsPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          label="Gross Revenue"
-          value={today ? INR(today.gross_revenue) : '—'}
-          sub={`${today?.bill_count || 0} bills today`}
-          icon={TrendingUp}
-          color="brand"
-        />
-        <StatCard
-          label="Net Profit"
-          value={today ? INR(today.net_profit) : '—'}
-          sub={today && today.gross_revenue > 0
-            ? `${((today.net_profit / today.gross_revenue) * 100).toFixed(1)}% margin`
-            : 'After COGS & Expenses'}
-          icon={DollarSign}
-          color="green"
-        />
-        <StatCard
-          label="Total COGS"
-          value={today ? INR(today.total_cogs) : '—'}
-          sub="Cost of goods sold"
-          icon={ShoppingBag}
-          color="blue"
-        />
-        <StatCard
-          label="Operating Expenses"
-          value={today ? INR(today.total_expenses) : '—'}
-          sub="Store transport, bills, etc."
-          icon={Wallet}
-          color="amber"
-        />
+        {loading && !data ? (
+          <>
+            <Skeleton className="h-[104px] w-full rounded-2xl" />
+            <Skeleton className="h-[104px] w-full rounded-2xl" />
+            <Skeleton className="h-[104px] w-full rounded-2xl" />
+            <Skeleton className="h-[104px] w-full rounded-2xl" />
+          </>
+        ) : (
+          <>
+            <StatCard
+              label="Gross Revenue"
+              value={today ? INR(today.gross_revenue) : '—'}
+              sub={`${today?.bill_count || 0} bills today`}
+              icon={TrendingUp}
+              color="brand"
+            />
+            <StatCard
+              label="Net Profit"
+              value={today ? INR(today.net_profit) : '—'}
+              sub={today && today.gross_revenue > 0
+                ? `${((today.net_profit / today.gross_revenue) * 100).toFixed(1)}% margin`
+                : 'After COGS & Expenses'}
+              icon={DollarSign}
+              color="green"
+            />
+            <StatCard
+              label="Total COGS"
+              value={today ? INR(today.total_cogs) : '—'}
+              sub="Cost of goods sold"
+              icon={ShoppingBag}
+              color="blue"
+            />
+            <StatCard
+              label="Operating Expenses"
+              value={today ? INR(today.total_expenses) : '—'}
+              sub="Store transport, bills, etc."
+              icon={Wallet}
+              color="amber"
+            />
+          </>
+        )}
       </div>
 
       {/* Charts & Split Cards */}
       <div className="grid grid-cols-3 gap-5">
         {/* Payment & Expense Split */}
-        <div className="glass-card p-5 col-span-1 flex flex-col gap-4">
-          <div>
-            <h3 className="text-slate-900 dark:text-white font-semibold text-sm mb-3">Payment Split</h3>
-            {pieData.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-28 text-slate-400 dark:text-white/25 gap-1">
-                <span className="text-2xl">💳</span>
-                <p className="text-xs">No sales recorded</p>
+        <div className="glass-card p-5 col-span-1 flex flex-col gap-4 min-h-[300px]">
+          {loading && !data ? (
+            <>
+              <div>
+                <Skeleton className="h-5 w-24 mb-3 rounded" />
+                <div className="space-y-3">
+                  <Skeleton className="h-4 w-full rounded" />
+                  <Skeleton className="h-4 w-5/6 rounded" />
+                  <Skeleton className="h-4 w-4/6 rounded" />
+                </div>
               </div>
-            ) : (
-              <div className="space-y-2">
-                {pieData.map((item) => (
-                  <div key={item.name} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
-                      <span className="text-slate-600 dark:text-white/60 font-medium">{item.name}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-slate-900 dark:text-white font-bold">{INR(item.value)}</span>
-                      <span className="text-slate-400 dark:text-white/30 ml-1">({item.count})</span>
-                    </div>
+              <hr className="border-slate-200 dark:border-white/5 my-1" />
+              <div>
+                <Skeleton className="h-5 w-48 mb-3 rounded" />
+                <div className="space-y-3">
+                  <Skeleton className="h-4 w-full rounded" />
+                  <Skeleton className="h-4 w-11/12 rounded" />
+                  <Skeleton className="h-4 w-4/5 rounded" />
+                  <Skeleton className="h-4 w-full rounded" />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <h3 className="text-slate-900 dark:text-white font-semibold text-sm mb-3">Payment Split</h3>
+                {pieData.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-28 text-slate-400 dark:text-white/25 gap-1">
+                    <span className="text-2xl">💳</span>
+                    <p className="text-xs">No sales recorded</p>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <hr className="border-slate-200 dark:border-white/5 my-1" />
-
-          {/* Expense Categories */}
-          <div>
-            <h3 className="text-slate-900 dark:text-white font-semibold text-sm mb-3">Expense Breakdown (Last 30 Days)</h3>
-            {catExpenses.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-24 text-slate-400 dark:text-white/25 gap-1">
-                <Receipt size={22} className="opacity-30" />
-                <p className="text-xs">No expenses logged yet</p>
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                {catExpenses.map((cat, idx) => (
-                  <div key={cat.category} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: EXPENSE_COLORS[idx % EXPENSE_COLORS.length] }} />
-                      <span className="text-slate-600 dark:text-white/60 font-medium">{cat.category}</span>
-                    </div>
-                    <span className="text-slate-900 dark:text-white font-bold">{INR(cat.amount)}</span>
+                ) : (
+                  <div className="space-y-2">
+                    {pieData.map((item) => (
+                      <div key={item.name} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
+                          <span className="text-slate-600 dark:text-white/60 font-medium">{item.name}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-slate-900 dark:text-white font-bold">{INR(item.value)}</span>
+                          <span className="text-slate-400 dark:text-white/30 ml-1">({item.count})</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </div>
+
+              <hr className="border-slate-200 dark:border-white/5 my-1" />
+
+              {/* Expense Categories */}
+              <div>
+                <h3 className="text-slate-900 dark:text-white font-semibold text-sm mb-3">Expense Breakdown (Last 30 Days)</h3>
+                {catExpenses.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-24 text-slate-400 dark:text-white/25 gap-1">
+                    <Receipt size={22} className="opacity-30" />
+                    <p className="text-xs">No expenses logged yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                    {catExpenses.map((cat, idx) => (
+                      <div key={cat.category} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ background: EXPENSE_COLORS[idx % EXPENSE_COLORS.length] }} />
+                          <span className="text-slate-600 dark:text-white/60 font-medium">{cat.category}</span>
+                        </div>
+                        <span className="text-slate-900 dark:text-white font-bold">{INR(cat.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Revenue vs Expenses vs Profit Chart */}
@@ -229,7 +259,9 @@ export default function AnalyticsPage() {
               ))}
             </div>
           </div>
-          {(!chartData || chartData.length === 0) ? (
+          {loading && !data ? (
+            <Skeleton className="h-[230px] w-full mt-8 rounded-xl" />
+          ) : (!chartData || chartData.length === 0) ? (
             <div className="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-white/25 gap-2">
               <span className="text-3xl">📈</span>
               <p className="text-xs">No chart data available</p>

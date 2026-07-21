@@ -90,8 +90,8 @@ export const posApi = {
   checkout: (payload) =>
     api.post('/pos/checkout', { tenant_id: getTenantId(), ...payload }),
 
-  recentSales: (limit = 20) =>
-    api.get('/pos/sales', { params: { tenant_id: getTenantId(), limit } }),
+  recentSales: (targetDate = null, limit = 50) =>
+    api.get('/pos/sales', { params: { tenant_id: getTenantId(), target_date: targetDate || undefined, limit: targetDate ? 1000 : limit } }),
 
   deleteSale: (saleId) =>
     api.delete(`/pos/sales/${saleId}`, { params: { tenant_id: getTenantId() } }),

@@ -5,6 +5,7 @@ import {
   X, Loader2, RefreshCw, ChevronDown, ChevronUp, Upload, FileSpreadsheet, RotateCcw
 } from 'lucide-react'
 import { productsApi } from '../services/api'
+import Skeleton from '../components/Skeleton'
 import LowStockBadge from '../components/LowStockBadge'
 import CSVImportModal from '../components/CSVImportModal'
 
@@ -404,9 +405,29 @@ export default function InventoryPage() {
       {/* Table / Empty Onboarding State */}
       <div className="flex-1 overflow-auto px-6 py-4">
         {loading ? (
-          <div className="flex items-center justify-center h-40 text-slate-400 dark:text-white/30 gap-2">
-            <Loader2 className="animate-spin text-brand-600 dark:text-brand-400" size={20} /><span className="text-sm">Loading...</span>
-          </div>
+          <table className="w-full">
+            <thead>
+              <tr className="text-left text-slate-500 dark:text-white/40 text-xs border-b border-slate-200 dark:border-white/5">
+                {['Category', 'Product Name', 'Selling ₹', 'Cost ₹', 'Stock', 'Margin %'].map((label, idx) => (
+                  <th key={idx} className="pb-3 pr-4 font-medium">{label}</th>
+                ))}
+                <th className="pb-3 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 dark:divide-white/5">
+              {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                <tr key={i}>
+                  <td className="py-3 pr-4"><Skeleton className="h-6 w-20 rounded-full" /></td>
+                  <td className="py-3 pr-4"><Skeleton className="h-5 w-32 rounded" /></td>
+                  <td className="py-3 pr-4"><Skeleton className="h-5 w-16 rounded" /></td>
+                  <td className="py-3 pr-4"><Skeleton className="h-5 w-16 rounded" /></td>
+                  <td className="py-3 pr-4"><Skeleton className="h-5 w-12 rounded" /></td>
+                  <td className="py-3 pr-4"><Skeleton className="h-5 w-12 rounded" /></td>
+                  <td className="py-3"><Skeleton className="h-8 w-16 rounded-xl" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         ) : products.length === 0 ? (
           /* ── High-Impact Empty Store Onboarding Card ── */
           <div className="flex flex-col items-center justify-center py-12 px-6 text-center max-w-lg mx-auto">

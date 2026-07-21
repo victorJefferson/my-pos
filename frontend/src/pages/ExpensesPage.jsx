@@ -4,11 +4,13 @@ import {
   Banknote, Smartphone, CreditCard, X, AlertCircle
 } from 'lucide-react'
 import { expensesApi, accountsApi } from '../services/api'
+import Skeleton from '../components/Skeleton'
 import StatCard from '../components/StatCard'
 import AddTransactionModal from '../components/AddTransactionModal'
 
 
 export default function ExpensesPage() {
+  const [expenses, setExpenses] = useState([])
   const [accounts, setAccounts] = useState([])
   const [categories, setCategories] = useState([])
   const [activeCategory, setActiveCategory] = useState('All')
@@ -145,9 +147,43 @@ export default function ExpensesPage() {
       {/* Table */}
       <div className="flex-1 overflow-auto px-6 py-4">
         {loading ? (
-          <div className="flex items-center justify-center h-40 text-slate-400 dark:text-white/30 gap-2">
-            <Loader2 className="animate-spin text-amber-500" size={20} />
-            <span className="text-sm">Loading expenses...</span>
+          <div className="flex-1 overflow-x-auto min-h-0">
+            <table className="w-full text-left border-collapse whitespace-nowrap">
+              <thead className="bg-slate-50 dark:bg-white/[0.02] sticky top-0 z-10 backdrop-blur-xl">
+                <tr>
+                  <th className="py-3 px-4 text-xs font-semibold text-slate-500 dark:text-white/40 border-b border-slate-200 dark:border-white/5">Date</th>
+                  <th className="py-3 px-4 text-xs font-semibold text-slate-500 dark:text-white/40 border-b border-slate-200 dark:border-white/5">Category</th>
+                  <th className="py-3 px-4 text-xs font-semibold text-slate-500 dark:text-white/40 border-b border-slate-200 dark:border-white/5">Amount</th>
+                  <th className="py-3 px-4 text-xs font-semibold text-slate-500 dark:text-white/40 border-b border-slate-200 dark:border-white/5">Description</th>
+                  <th className="py-3 px-4 text-xs font-semibold text-slate-500 dark:text-white/40 border-b border-slate-200 dark:border-white/5">Payment Mode</th>
+                  <th className="py-3 px-4 text-xs font-semibold text-slate-500 dark:text-white/40 border-b border-slate-200 dark:border-white/5 text-right w-16">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <tr key={i} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                    <td className="py-3 pl-4">
+                      <Skeleton className="h-4 w-24 rounded" />
+                    </td>
+                    <td className="py-3 px-4">
+                      <Skeleton className="h-6 w-24 rounded-full" />
+                    </td>
+                    <td className="py-3 px-4">
+                      <Skeleton className="h-5 w-20 rounded" />
+                    </td>
+                    <td className="py-3 px-4">
+                      <Skeleton className="h-4 w-32 rounded" />
+                    </td>
+                    <td className="py-3 px-4">
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                    </td>
+                    <td className="py-3 pr-4 text-right">
+                      <Skeleton className="h-8 w-8 ml-auto rounded-xl" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-white/30 gap-2">
