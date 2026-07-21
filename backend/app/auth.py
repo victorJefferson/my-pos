@@ -99,8 +99,7 @@ def verify_clerk_token(token: str) -> dict:
             token,
             public_key.to_pem().decode("utf-8"),
             algorithms=["RS256"],
-            options={"verify_aud": False},  # Clerk tokens may not have aud
-            leeway=60,  # 60-second leeway for clock skew tolerance
+            options={"verify_aud": False, "leeway": 60},  # Clerk tokens may not have aud; 60s leeway for clock skew
         )
         return payload
 
