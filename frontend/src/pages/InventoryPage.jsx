@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Package, Plus, Edit2, Trash2, Search, AlertTriangle,
   X, Loader2, RefreshCw, ChevronDown, ChevronUp, Upload, FileSpreadsheet, RotateCcw
@@ -160,6 +161,7 @@ function ProductModal({ product, categories, onSave, onClose }) {
 }
 
 export default function InventoryPage() {
+  const [searchParams] = useSearchParams()
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState(['All'])
   const [activeCategory, setActiveCategory] = useState('All')
@@ -173,6 +175,17 @@ export default function InventoryPage() {
   const [resetting, setResetting] = useState(false)
   const [sortField, setSortField] = useState('name')
   const [sortDir, setSortDir] = useState('asc')
+
+  useEffect(() => {
+    const filter = searchParams.get('filter')
+    if (filter === 'low_stock') {
+      setLowStockOnly(true)
+      setOutOfStockOnly(false)
+    } else if (filter === 'out_of_stock') {
+      setOutOfStockOnly(true)
+      setLowStockOnly(false)
+    }
+  }, [searchParams])
 
   const loadCategories = () => {
     productsApi.categories().then((r) => setCategories(['All', ...r.data])).catch(console.error)

@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ChevronRight, ChevronLeft, Flame, TrendingUp, AlertTriangle, AlertCircle, RefreshCw, Loader2, LayoutGrid } from 'lucide-react'
 import { analyticsApi } from '../services/api'
 import { getCategoryEmoji } from '../utils/categoryUtils'
 
 export default function GlobalWidgetsDrawer() {
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -24,6 +26,11 @@ export default function GlobalWidgetsDrawer() {
       setLoading(false)
     }
   }, [])
+
+  const handleWidgetClick = (filterType) => {
+    setOpen(false)
+    navigate(`/inventory?filter=${filterType}`)
+  }
 
   // Fetch fresh data whenever drawer opens
   useEffect(() => {
@@ -234,16 +241,23 @@ export default function GlobalWidgetsDrawer() {
                   </div>
                 </div>
 
-                {/* 3. Low Stock Items */}
-                <div className="glass-card p-4 flex flex-col justify-between">
+                {/* 3. Low Stock Items (Clickable -> /inventory?filter=low_stock) */}
+                <div
+                  onClick={() => handleWidgetClick('low_stock')}
+                  className="glass-card p-4 flex flex-col justify-between cursor-pointer border border-transparent hover:border-amber-500/60 hover:shadow-lg hover:shadow-amber-500/10 dark:hover:border-amber-400/60 transition-all duration-200 active:scale-[0.98] group/card"
+                  title="Click to view all Low Stock products in Inventory"
+                >
                   <div>
                     <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200 dark:border-white/5">
                       <div className="w-6 h-6 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
                         <AlertTriangle size={13} className="text-amber-600 dark:text-amber-400" />
                       </div>
-                      <div>
-                        <h3 className="text-slate-900 dark:text-white font-bold text-xs">Low Stock Alert</h3>
-                        <p className="text-slate-400 dark:text-white/30 text-[10px]">1 to 10 units remaining</p>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-slate-900 dark:text-white font-bold text-xs group-hover/card:text-amber-600 dark:group-hover/card:text-amber-400 transition-colors flex items-center justify-between">
+                          Low Stock Alert
+                          <ChevronRight size={13} className="opacity-0 group-hover/card:opacity-100 transition-opacity text-amber-500 shrink-0" />
+                        </h3>
+                        <p className="text-slate-400 dark:text-white/30 text-[10px]">1 to 10 units remaining · Click to filter</p>
                       </div>
                     </div>
 
@@ -272,16 +286,23 @@ export default function GlobalWidgetsDrawer() {
                   </div>
                 </div>
 
-                {/* 4. Out of Stock Items */}
-                <div className="glass-card p-4 flex flex-col justify-between">
+                {/* 4. Out of Stock Items (Clickable -> /inventory?filter=out_of_stock) */}
+                <div
+                  onClick={() => handleWidgetClick('out_of_stock')}
+                  className="glass-card p-4 flex flex-col justify-between cursor-pointer border border-transparent hover:border-red-500/60 hover:shadow-lg hover:shadow-red-500/10 dark:hover:border-red-400/60 transition-all duration-200 active:scale-[0.98] group/card"
+                  title="Click to view all Out of Stock products in Inventory"
+                >
                   <div>
                     <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200 dark:border-white/5">
                       <div className="w-6 h-6 rounded-lg bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0">
                         <AlertCircle size={13} className="text-red-600 dark:text-red-400" />
                       </div>
-                      <div>
-                        <h3 className="text-slate-900 dark:text-white font-bold text-xs">Out of Stock Alert</h3>
-                        <p className="text-slate-400 dark:text-white/30 text-[10px]">0 units remaining</p>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-slate-900 dark:text-white font-bold text-xs group-hover/card:text-red-600 dark:group-hover/card:text-red-400 transition-colors flex items-center justify-between">
+                          Out of Stock Alert
+                          <ChevronRight size={13} className="opacity-0 group-hover/card:opacity-100 transition-opacity text-red-500 shrink-0" />
+                        </h3>
+                        <p className="text-slate-400 dark:text-white/30 text-[10px]">0 units remaining · Click to filter</p>
                       </div>
                     </div>
 
