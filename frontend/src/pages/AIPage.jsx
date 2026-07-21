@@ -19,6 +19,7 @@ export default function AIPage() {
   const [eodLoading, setEodLoading] = useState(false)
 
   const ask = async (q) => {
+    if (loading) return
     const text = q || question.trim()
     if (!text) return
     setQuestion('')
@@ -88,7 +89,8 @@ export default function AIPage() {
                   <button
                     key={q}
                     onClick={() => ask(q)}
-                    className="text-left text-xs text-slate-600 hover:text-slate-900 bg-white hover:bg-brand-50/80 border border-slate-200 hover:border-brand-300 dark:text-white/60 dark:hover:text-white dark:bg-white/5 dark:hover:bg-brand-600/15 dark:border-white/5 dark:hover:border-brand-500/30 rounded-xl px-3 py-2.5 transition-all shadow-sm"
+                    disabled={loading}
+                    className="text-left text-xs text-slate-600 hover:text-slate-900 bg-white hover:bg-brand-50/80 border border-slate-200 hover:border-brand-300 dark:text-white/60 dark:hover:text-white dark:bg-white/5 dark:hover:bg-brand-600/15 dark:border-white/5 dark:hover:border-brand-500/30 rounded-xl px-3 py-2.5 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {q}
                   </button>

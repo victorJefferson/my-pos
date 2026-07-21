@@ -142,6 +142,7 @@ export default function POSPage() {
 
   // ── Checkout ───────────────────────────────────────────────────────────────
   const handlePay = async (paymentMode) => {
+    if (paying) return
     if (!TENANT_ID) {
       alert('⚠️ VITE_TENANT_ID is not set in your .env file.')
       return
@@ -175,8 +176,8 @@ export default function POSPage() {
 
   // ── Keyboard shortcuts ─────────────────────────────────────────────────────
   usePOSKeyboard({
-    onSpace: () => cart.length > 0 && setShowPayment(true),
-    onEsc: () => { if (showPayment) setShowPayment(false); else clearBill() },
+    onSpace: () => !paying && cart.length > 0 && setShowPayment(true),
+    onEsc: () => { if (!paying) { if (showPayment) setShowPayment(false); else clearBill() } },
     onEnter: () => searchRef.current?.focus(),
   })
 

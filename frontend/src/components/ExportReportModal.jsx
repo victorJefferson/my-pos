@@ -233,6 +233,7 @@ export default function ExportReportModal({ onClose }) {
 
   // ── Handle Export ──────────────────────────────────────────────────────────
   const handleExport = async () => {
+    if (exporting) return
     if (!startDate || !endDate) {
       return setError('Please select valid start and end dates')
     }
@@ -258,7 +259,7 @@ export default function ExportReportModal({ onClose }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={() => !exporting && onClose()}>
       <div className="glass-card bg-white dark:bg-[#111122] p-6 w-full max-w-md animate-scale-in" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
@@ -271,7 +272,7 @@ export default function ExportReportModal({ onClose }) {
               <p className="text-slate-500 dark:text-white/40 text-xs">Generate PDF or Excel statement</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white"><X size={18} /></button>
+          <button onClick={onClose} disabled={exporting} className="text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white disabled:opacity-30"><X size={18} /></button>
         </div>
 
         <div className="space-y-4">
@@ -376,7 +377,7 @@ export default function ExportReportModal({ onClose }) {
 
         {/* Action buttons */}
         <div className="flex gap-2 mt-6">
-          <button onClick={onClose} className="btn-ghost flex-1 text-sm">Cancel</button>
+          <button onClick={onClose} disabled={exporting} className="btn-ghost flex-1 text-sm disabled:opacity-30">Cancel</button>
           <button onClick={handleExport} disabled={exporting} className="btn-glow flex-1 text-sm flex items-center justify-center gap-2">
             {exporting ? <Loader2 className="animate-spin" size={16} /> : <><Download size={15} /> Download Report</>}
           </button>

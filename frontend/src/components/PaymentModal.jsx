@@ -29,7 +29,7 @@ const PAYMENT_MODES = [
 
 export default function PaymentModal({ total, onPay, onCancel, loading }) {
   return (
-    <div className="modal-overlay" onClick={onCancel}>
+    <div className="modal-overlay" onClick={() => !loading && onCancel()}>
       <div
         className="glass-card bg-white dark:bg-[#111122] p-6 w-full max-w-md animate-scale-in"
         onClick={(e) => e.stopPropagation()}
@@ -40,7 +40,11 @@ export default function PaymentModal({ total, onPay, onCancel, loading }) {
             <h2 className="text-slate-900 dark:text-white font-bold text-lg">Select Payment</h2>
             <p className="text-slate-500 dark:text-white/40 text-sm">Total amount to collect</p>
           </div>
-          <button onClick={onCancel} className="text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white transition-colors">
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            className="text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
             <X size={20} />
           </button>
         </div>
@@ -79,7 +83,11 @@ export default function PaymentModal({ total, onPay, onCancel, loading }) {
           ))}
         </div>
 
-        <button onClick={onCancel} className="btn-ghost w-full text-sm mt-1">
+        <button
+          onClick={onCancel}
+          disabled={loading}
+          className="btn-ghost w-full text-sm mt-1 disabled:opacity-30 disabled:cursor-not-allowed"
+        >
           Cancel (Esc)
         </button>
       </div>

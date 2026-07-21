@@ -37,6 +37,7 @@ function CreateStoreModal({ onSave, onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (saving) return
     if (!name.trim()) return setError('Please enter a store name')
     setSaving(true)
     try {
@@ -50,14 +51,14 @@ function CreateStoreModal({ onSave, onClose }) {
   }
 
   return (
-    <div className="modal-overlay z-50" onClick={onClose}>
+    <div className="modal-overlay z-50" onClick={() => !saving && onClose()}>
       <div className="glass-card bg-white dark:bg-[#111122] p-6 w-full max-w-sm animate-scale-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Store size={18} className="text-brand-600 dark:text-brand-400" />
             <h3 className="text-slate-900 dark:text-white font-bold text-sm">Create New Store</h3>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white"><X size={16} /></button>
+          <button onClick={onClose} disabled={saving} className="text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white disabled:opacity-30"><X size={16} /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -66,7 +67,8 @@ function CreateStoreModal({ onSave, onClose }) {
             <input
               type="text"
               autoFocus
-              className="input-field text-sm font-semibold"
+              disabled={saving}
+              className="input-field text-sm font-semibold disabled:opacity-50"
               placeholder="e.g. Metro Mart"
               value={name}
               onChange={(e) => { setName(e.target.value); setError('') }}
@@ -76,7 +78,7 @@ function CreateStoreModal({ onSave, onClose }) {
           {error && <p className="text-red-500 text-xs">{error}</p>}
 
           <div className="flex gap-2 pt-2">
-            <button type="button" onClick={onClose} className="btn-ghost flex-1 text-xs">Cancel</button>
+            <button type="button" onClick={onClose} disabled={saving} className="btn-ghost flex-1 text-xs disabled:opacity-30">Cancel</button>
             <button type="submit" disabled={saving} className="btn-glow flex-1 text-xs font-bold flex items-center justify-center gap-1">
               {saving ? <Loader2 className="animate-spin" size={14} /> : 'Create Store'}
             </button>

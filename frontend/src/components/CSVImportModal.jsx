@@ -95,7 +95,7 @@ export default function CSVImportModal({ onImportSuccess, onClose }) {
 
   // ── Import Action ─────────────────────────────────────────────────────────
   const handleImport = async () => {
-    if (parsedItems.length === 0) return
+    if (importing || parsedItems.length === 0) return
     setImporting(true)
     try {
       await onImportSuccess(parsedItems)
@@ -108,7 +108,7 @@ export default function CSVImportModal({ onImportSuccess, onClose }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={() => !importing && onClose()}>
       <div className="glass-card bg-white dark:bg-[#111122] p-6 w-full max-w-xl animate-scale-in" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
@@ -121,7 +121,7 @@ export default function CSVImportModal({ onImportSuccess, onClose }) {
               <p className="text-slate-500 dark:text-white/40 text-xs">Upload your product catalog in bulk</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white"><X size={18} /></button>
+          <button onClick={onClose} disabled={importing} className="text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white disabled:opacity-30"><X size={18} /></button>
         </div>
 
         {/* Download Sample Template link */}
@@ -195,7 +195,7 @@ export default function CSVImportModal({ onImportSuccess, onClose }) {
 
         {/* Action Buttons */}
         <div className="flex gap-2">
-          <button onClick={onClose} className="btn-ghost flex-1 text-sm">Cancel</button>
+          <button onClick={onClose} disabled={importing} className="btn-ghost flex-1 text-sm disabled:opacity-30">Cancel</button>
           <button
             onClick={handleImport}
             disabled={parsedItems.length === 0 || importing}

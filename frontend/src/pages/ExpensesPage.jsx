@@ -22,6 +22,7 @@ function AddExpenseModal({ categories, onSave, onClose }) {
   const [error, setError] = useState('')
 
   const handleSave = async () => {
+    if (saving) return
     const parsedAmount = parseFloat(amount)
     if (!amount || isNaN(parsedAmount) || parsedAmount <= 0) {
       return setError('Please enter a valid expense amount')
@@ -49,7 +50,7 @@ function AddExpenseModal({ categories, onSave, onClose }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={() => !saving && onClose()}>
       <div className="glass-card bg-white dark:bg-[#111122] p-6 w-full max-w-md animate-scale-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2.5">
@@ -61,7 +62,7 @@ function AddExpenseModal({ categories, onSave, onClose }) {
               <p className="text-slate-500 dark:text-white/40 text-xs">Track procurement, transport, bills, etc.</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white"><X size={18} /></button>
+          <button onClick={onClose} disabled={saving} className="text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white disabled:opacity-30"><X size={18} /></button>
         </div>
 
         <div className="space-y-4">
@@ -143,7 +144,7 @@ function AddExpenseModal({ categories, onSave, onClose }) {
         )}
 
         <div className="flex gap-2 mt-6">
-          <button onClick={onClose} className="btn-ghost flex-1 text-sm">Cancel</button>
+          <button onClick={onClose} disabled={saving} className="btn-ghost flex-1 text-sm disabled:opacity-30">Cancel</button>
           <button onClick={handleSave} disabled={saving} className="btn-glow flex-1 text-sm">
             {saving ? <Loader2 className="animate-spin mx-auto" size={16} /> : 'Save Expense'}
           </button>
@@ -161,6 +162,7 @@ export default function ExpensesPage() {
   const [targetDate, setTargetDate] = useState('')
   const [loading, setLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -192,9 +194,17 @@ export default function ExpensesPage() {
   }
 
   const handleDelete = async (exp) => {
+    if (deletingId === exp.id) return
     if (!window.confirm(`Delete expense "${exp.category} - ₹${exp.amount}"?`)) return
-    await expensesApi.delete(exp.id)
-    loadData()
+    setDeletingId(exp.id)
+    try {
+      await expensesApi.delete(exp.id)
+      await loadData()
+    } catch (e) {
+      alert('Failed to delete expense: ' + (e.response?.data?.detail || e.message))
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   const filtered = expenses.filter((e) => {
@@ -328,9 +338,10 @@ export default function ExpensesPage() {
                   <td className="py-3">
                     <button
                       onClick={() => handleDelete(e)}
-                      className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-50 text-slate-400 hover:text-red-600 dark:hover:bg-red-900/30 dark:text-white/40 dark:hover:text-red-400 transition-all"
+                      disabled={deletingId === e.id}
+                      className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-50 text-slate-400 hover:text-red-600 dark:hover:bg-red-900/30 dark:text-white/40 dark:hover:text-red-400 transition-all disabled:opacity-50"
                     >
-                      <Trash2 size={14} />
+                      {deletingId === e.id ? <Loader2 size={14} className="animate-spin text-red-500" /> : <Trash2 size={14} />}
                     </button>
                   </td>
                 </tr>

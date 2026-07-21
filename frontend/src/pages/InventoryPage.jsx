@@ -15,7 +15,7 @@ function ResetConfirmationModal({ productCount, onConfirm, onClose, loading }) {
   const [confirmInput, setConfirmInput] = useState('')
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={() => !loading && onClose()}>
       <div className="glass-card bg-white dark:bg-[#111122] p-6 w-full max-w-md animate-scale-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0">
@@ -43,16 +43,17 @@ function ResetConfirmationModal({ productCount, onConfirm, onClose, loading }) {
 
         <input
           type="text"
-          className="input-field mb-4 font-mono uppercase text-sm"
+          disabled={loading}
+          className="input-field mb-4 font-mono uppercase text-sm disabled:opacity-50"
           placeholder="Type RESET"
           value={confirmInput}
           onChange={(e) => setConfirmInput(e.target.value)}
         />
 
         <div className="flex gap-2">
-          <button onClick={onClose} className="btn-ghost flex-1 text-sm">Cancel</button>
+          <button onClick={onClose} disabled={loading} className="btn-ghost flex-1 text-sm disabled:opacity-30">Cancel</button>
           <button
-            onClick={onConfirm}
+            onClick={() => !loading && onConfirm()}
             disabled={confirmInput.trim() !== 'RESET' || loading}
             className="btn-glow flex-1 text-sm bg-red-600 hover:bg-red-500 disabled:opacity-30 disabled:shadow-none"
           >
@@ -77,6 +78,7 @@ function ProductModal({ product, categories, onSave, onClose }) {
   const [error, setError] = useState('')
 
   const handleSave = async () => {
+    if (saving) return
     if (!form.name.trim()) return setError('Product name is required')
     if (!form.category.trim()) return setError('Category is required')
     setSaving(true)
@@ -97,11 +99,11 @@ function ProductModal({ product, categories, onSave, onClose }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={() => !saving && onClose()}>
       <div className="glass-card bg-white dark:bg-[#111122] p-6 w-full max-w-md animate-scale-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-slate-900 dark:text-white font-bold">{product ? 'Edit Product' : 'Add Product'}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white"><X size={18} /></button>
+          <button onClick={onClose} disabled={saving} className="text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white disabled:opacity-30"><X size={18} /></button>
         </div>
 
         <div className="space-y-3">
@@ -110,7 +112,7 @@ function ProductModal({ product, categories, onSave, onClose }) {
               <label className="text-slate-600 dark:text-white/50 text-xs mb-1 block font-medium">Category *</label>
               <input className="input-field" placeholder="e.g. Snack"
                 value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
-                list="categories-list" />
+                list="categories-list" disabled={saving} />
               <datalist id="categories-list">
                 {categories.filter(c => c !== 'All').map(c => <option key={c} value={c} />)}
               </datalist>
@@ -118,7 +120,7 @@ function ProductModal({ product, categories, onSave, onClose }) {
             <div>
               <label className="text-slate-600 dark:text-white/50 text-xs mb-1 block font-medium">Product Name *</label>
               <input className="input-field" placeholder="e.g. Amul Kulfi"
-                value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} disabled={saving} />
             </div>
           </div>
 
@@ -126,18 +128,18 @@ function ProductModal({ product, categories, onSave, onClose }) {
             <div>
               <label className="text-slate-600 dark:text-white/50 text-xs mb-1 block font-medium">Selling Price (₹)</label>
               <input className="input-field" type="number" min="0" step="0.5"
-                placeholder="—" value={form.selling_price}
+                placeholder="—" value={form.selling_price} disabled={saving}
                 onChange={(e) => setForm({ ...form, selling_price: e.target.value })} />
             </div>
             <div>
               <label className="text-slate-600 dark:text-white/50 text-xs mb-1 block font-medium">Cost Price (₹)</label>
               <input className="input-field" type="number" min="0" step="0.5"
-                placeholder="—" value={form.cost_price}
+                placeholder="—" value={form.cost_price} disabled={saving}
                 onChange={(e) => setForm({ ...form, cost_price: e.target.value })} />
             </div>
             <div>
               <label className="text-slate-600 dark:text-white/50 text-xs mb-1 block font-medium">Stock Qty</label>
-              <input className="input-field" type="number" min="0"
+              <input className="input-field" type="number" min="0" disabled={saving}
                 value={form.stock_quantity}
                 onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} />
             </div>
@@ -147,7 +149,7 @@ function ProductModal({ product, categories, onSave, onClose }) {
         {error && <p className="text-red-500 dark:text-red-400 text-xs mt-3">{error}</p>}
 
         <div className="flex gap-2 mt-5">
-          <button onClick={onClose} className="btn-ghost flex-1 text-sm">Cancel</button>
+          <button onClick={onClose} disabled={saving} className="btn-ghost flex-1 text-sm disabled:opacity-30">Cancel</button>
           <button onClick={handleSave} disabled={saving} className="btn-glow flex-1 text-sm">
             {saving ? <Loader2 className="animate-spin mx-auto" size={16} /> : 'Save'}
           </button>
@@ -217,15 +219,25 @@ export default function InventoryPage() {
     }
   }
 
+  const [deletingId, setDeletingId] = useState(null)
+
   const handleUpdate = async (id, payload) => {
     await productsApi.update(id, payload)
     loadProducts()
   }
 
   const handleDelete = async (product) => {
+    if (deletingId === product.id) return
     if (!window.confirm(`Deactivate "${product.name}"?`)) return
-    await productsApi.delete(product.id)
-    loadProducts()
+    setDeletingId(product.id)
+    try {
+      await productsApi.delete(product.id)
+      await loadProducts()
+    } catch (e) {
+      alert('Failed to deactivate product: ' + (e.response?.data?.detail || e.message))
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   const toggleSort = (field) => {
@@ -473,9 +485,12 @@ export default function InventoryPage() {
                         className="p-1.5 rounded-lg hover:bg-brand-50 text-slate-400 hover:text-brand-600 dark:hover:bg-brand-600/20 dark:text-white/40 dark:hover:text-brand-400 transition-colors">
                         <Edit2 size={13} />
                       </button>
-                      <button onClick={() => handleDelete(p)}
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 dark:hover:bg-red-900/30 dark:text-white/40 dark:hover:text-red-400 transition-colors">
-                        <Trash2 size={13} />
+                      <button
+                        onClick={() => handleDelete(p)}
+                        disabled={deletingId === p.id}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 dark:hover:bg-red-900/30 dark:text-white/40 dark:hover:text-red-400 transition-colors disabled:opacity-50"
+                      >
+                        {deletingId === p.id ? <Loader2 size={13} className="animate-spin text-red-500" /> : <Trash2 size={13} />}
                       </button>
                     </div>
                   </td>
