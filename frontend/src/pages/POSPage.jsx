@@ -8,6 +8,7 @@ import CartSidebar from '../components/CartSidebar'
 import PriceModal from '../components/PriceModal'
 import PaymentModal from '../components/PaymentModal'
 import RecentTransactions from '../components/RecentTransactions'
+import ScannerOverlay from '../components/ScannerOverlay'
 
 import { getCategoryEmoji } from '../utils/categoryUtils'
 
@@ -21,6 +22,7 @@ export default function POSPage() {
   const [cart, setCart] = useState([])
   const [loading, setLoading] = useState(true)
   const [showPayment, setShowPayment] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
   const [paying, setPaying] = useState(false)
   const [priceModal, setPriceModal] = useState(null)            // {product}
   const [successMsg, setSuccessMsg] = useState(null)
@@ -304,6 +306,7 @@ export default function POSPage() {
           onQtyChange={changeQty}
           onClear={clearBill}
           onCheckout={() => cart.length > 0 && setShowPayment(true)}
+          onOpenScanner={() => setShowScanner(true)}
         />
         <RecentTransactions
           ref={recentRef}
@@ -328,6 +331,13 @@ export default function POSPage() {
           loading={paying}
         />
       )}
+
+      <ScannerOverlay
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+        onAddToCart={addToCart}
+        allProducts={allProducts}
+      />
 
       {/* ── Success Toast ─────────────────────────────────────────────────────── */}
       {successMsg && (

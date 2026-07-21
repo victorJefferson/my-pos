@@ -1,8 +1,10 @@
-import { Trash2, Plus, Minus } from 'lucide-react'
+import { Trash2, Plus, Minus, Camera } from 'lucide-react'
 
-export default function CartSidebar({ items, onRemove, onQtyChange, onClear, onCheckout }) {
+export default function CartSidebar({ items, onRemove, onQtyChange, onClear, onCheckout, onOpenScanner }) {
   const total = items.reduce((sum, i) => sum + i.unit_selling_price * i.quantity, 0)
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0)
+
+  const imageRecEnabled = import.meta.env.VITE_ENABLE_IMAGE_RECOGNITION === 'true'
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-white dark:bg-[#0a0a14] transition-colors duration-200">
@@ -12,7 +14,17 @@ export default function CartSidebar({ items, onRemove, onQtyChange, onClear, onC
           <h2 className="text-slate-900 dark:text-white font-semibold text-sm">Current Bill</h2>
           <p className="text-slate-500 dark:text-white/40 text-xs">{itemCount} items</p>
         </div>
-        {items.length > 0 && (
+        <div className="flex items-center gap-3">
+          {imageRecEnabled && (
+            <button
+              onClick={onOpenScanner}
+              className="text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 transition-colors flex items-center justify-center p-1.5 rounded-lg hover:bg-brand-50 dark:hover:bg-brand-500/10"
+              title="Smart Scanner"
+            >
+              <Camera size={18} />
+            </button>
+          )}
+          {items.length > 0 && (
           <button
             onClick={onClear}
             className="text-slate-400 hover:text-red-600 dark:text-white/30 dark:hover:text-red-400 transition-colors text-xs flex items-center gap-1"
@@ -22,6 +34,7 @@ export default function CartSidebar({ items, onRemove, onQtyChange, onClear, onC
             Clear
           </button>
         )}
+        </div>
       </div>
 
       {/* Items list */}

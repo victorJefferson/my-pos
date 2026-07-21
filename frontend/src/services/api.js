@@ -142,6 +142,15 @@ export const aiApi = {
     }),
 }
 
+// ── ML (Image Recognition) ────────────────────────────────────────────────────
+export const mlApi = {
+  recognize: (vector) =>
+    api.post('/ml/recognize', { vector }, { params: { tenant_id: getTenantId() } }),
+
+  teach: (productId, vector) =>
+    api.post('/ml/teach', { product_id: productId, vector }, { params: { tenant_id: getTenantId() } }),
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const authApi = {
   me: () => api.get('/auth/me'),
