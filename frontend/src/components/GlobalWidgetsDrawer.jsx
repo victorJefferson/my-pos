@@ -8,6 +8,11 @@ export default function GlobalWidgetsDrawer() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
 
+  // Magnetic gravity & edge proximity state
+  const [visible, setVisible] = useState(false)
+  const [posY, setPosY] = useState(() => window.innerHeight / 2)
+  const [isHovered, setIsHovered] = useState(false)
+
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
@@ -27,6 +32,29 @@ export default function GlobalWidgetsDrawer() {
     }
   }, [open, loadData])
 
+  // Mousemove listener for right edge proximity and magnetic Y tracking
+  useEffect(() => {
+    if (open) return
+
+    const handleMouseMove = (e) => {
+      const distanceFromRight = window.innerWidth - e.clientX
+      // Reveal when cursor is within 45px of the right screen edge or hovering the button
+      const isNearEdge = distanceFromRight <= 45
+
+      if (isNearEdge || isHovered) {
+        setVisible(true)
+        // Clamp Y position cleanly so it doesn't collide with screen edges
+        const clampedY = Math.max(60, Math.min(window.innerHeight - 60, e.clientY))
+        setPosY(clampedY)
+      } else if (!isHovered) {
+        setVisible(false)
+      }
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    return () => window.removeEventListener('mousemove', handleMouseMove)
+  }, [open, isHovered])
+
   // ESC key listener to close drawer
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -43,26 +71,42 @@ export default function GlobalWidgetsDrawer() {
 
   return (
     <>
-      {/* ── Seamless Right-Bezel Puller Handle (Vertically Centered) ────────────────── */}
-      <button
-        onClick={() => setOpen((prev) => !prev)}
+      {/* ── Magnetic Liquid Jelly Puller Button ───────────────────────────────── */}
+      <div
+        style={{
+          top: `${posY}px`,
+        }}
         className={`
-          fixed right-0 top-1/2 -translate-y-1/2 z-40
-          flex items-center justify-center py-4 px-1 rounded-l-xl
-          bg-white/90 dark:bg-[#161626]/90 backdrop-blur-md
-          text-slate-600 dark:text-white/70 hover:text-brand-600 dark:hover:text-brand-400
-          border-l border-y border-slate-200/80 dark:border-white/10
-          shadow-xl hover:shadow-2xl hover:pl-2
-          transition-all duration-200 cursor-pointer group
-          ${open ? 'translate-x-full opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}
+          fixed right-0 z-40 -translate-y-1/2 pointer-events-auto
+          animate-jelly
+          ${open || (!visible && !isHovered)
+            ? 'translate-x-full opacity-0 pointer-events-none scale-75'
+            : 'translate-x-0 opacity-100 scale-100'}
         `}
-        title="View Store Widgets"
       >
-        <div className="flex flex-col items-center gap-1.5">
-          <ChevronLeft size={16} className="group-hover:-translate-x-0.5 transition-transform text-slate-400 dark:text-white/40" />
-          <LayoutGrid size={13} className="text-brand-600 dark:text-brand-400" />
-        </div>
-      </button>
+        <button
+          onClick={() => setOpen(true)}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          className={`
+            group cursor-pointer flex items-center gap-2.5 py-2.5 px-3.5 rounded-l-2xl
+            bg-gradient-to-r from-brand-600 via-indigo-600 to-purple-600
+            text-white shadow-[0_8px_25px_rgba(124,58,237,0.45)]
+            border-l-2 border-y border-white/20
+            hover:shadow-[0_12px_30px_rgba(124,58,237,0.65)] hover:pr-4.5
+            transition-all duration-200 active:scale-95 active:rounded-l-3xl
+          `}
+          title="View Store Widgets"
+        >
+          <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform text-white/90 shrink-0" />
+          <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
+            <LayoutGrid size={13} className="text-white" />
+          </div>
+          <span className="text-xs font-bold tracking-wide whitespace-nowrap pr-0.5">
+            Widgets
+          </span>
+        </button>
+      </div>
 
       {/* ── Slide-Over Panel Container ───────────────────────────────────────────── */}
       <div
