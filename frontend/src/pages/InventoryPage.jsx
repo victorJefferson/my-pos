@@ -233,10 +233,26 @@ export default function InventoryPage() {
     else { setSortField(field); setSortDir('asc') }
   }
 
-  const sorted = [...products].sort((a, b) => {
-    let av = a[sortField], bv = b[sortField]
-    if (av === null) return 1
-    if (bv === null) return -1
+  const getMarginPct = (p) => {
+    if (p.profit_margin_pct != null) return Number(p.profit_margin_pct)
+    if (p.selling_price != null && p.cost_price != null && Number(p.selling_price) > 0) {
+      const sp = Number(p.selling_price)
+      const cp = Number(p.cost_price)
+      return ((sp - cp) / sp) * 100
+    }
+    return null
+  }
+
+  const filteredProducts = products.filter((p) => {
+    if (lowStockOnly && p.stock_quantity > 10) return false
+    return true
+  })
+
+  const sorted = [...filteredProducts].sort((a, b) => {
+    let av = sortField === 'profit_margin_pct' ? getMarginPct(a) : a[sortField]
+    let bv = sortField === 'profit_margin_pct' ? getMarginPct(b) : b[sortField]
+    if (av === null || av === undefined) return 1
+    if (bv === null || bv === undefined) return -1
     if (typeof av === 'string') av = av.toLowerCase()
     if (typeof bv === 'string') bv = bv.toLowerCase()
     return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1)
@@ -249,7 +265,7 @@ export default function InventoryPage() {
       : <ChevronDown size={12} className="text-brand-600 dark:text-brand-400" />
   }
 
-  const lowStockCount = products.filter(p => p.stock_quantity < 10 && p.is_active).length
+  const lowStockCount = products.filter(p => p.stock_quantity <= 10 && p.is_active).length
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200">
@@ -402,13 +418,16 @@ export default function InventoryPage() {
                     </div>
                   </td>
                   <td className="py-3 pr-4">
-                    {p.profit_margin_pct != null ? (
-                      <span className={`text-sm font-semibold ${p.profit_margin_pct >= 20 ? 'text-emerald-600 dark:text-emerald-400' : p.profit_margin_pct >= 10 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
-                        {p.profit_margin_pct.toFixed(1)}%
-                      </span>
-                    ) : (
-                      <span className="text-slate-400 dark:text-white/25 text-xs">—</span>
-                    )}
+                    {(() => {
+                      const margin = getMarginPct(p)
+                      return margin != null ? (
+                        <span className={`text-sm font-semibold ${margin >= 20 ? 'text-emerald-600 dark:text-emerald-400' : margin >= 10 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {margin.toFixed(1)}%
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 dark:text-white/25 text-xs">—</span>
+                      )
+                    })()}
                   </td>
                   <td className="py-3">
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

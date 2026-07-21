@@ -15,6 +15,10 @@ router = APIRouter(prefix="/products", tags=["products"])
 
 
 def _to_read(p: Product) -> ProductRead:
+    margin_pct = None
+    if p.selling_price is not None and p.cost_price is not None and float(p.selling_price) > 0:
+        margin_pct = float(((p.selling_price - p.cost_price) / p.selling_price) * 100)
+
     return ProductRead(
         id=p.id,
         tenant_id=p.tenant_id,
@@ -25,6 +29,7 @@ def _to_read(p: Product) -> ProductRead:
         stock_quantity=p.stock_quantity,
         is_active=p.is_active,
         is_low_stock=p.stock_quantity <= 10,
+        profit_margin_pct=margin_pct,
         created_at=p.created_at,
     )
 
