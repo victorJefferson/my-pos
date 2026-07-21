@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import {
   SignedIn,
@@ -13,18 +14,45 @@ import AnalyticsPage from './pages/AnalyticsPage'
 import AIPage from './pages/AIPage'
 import TransactionsPage from './pages/TransactionsPage'
 
+import MobileNavbar from './components/MobileNavbar'
 import GlobalWidgetsDrawer from './components/GlobalWidgetsDrawer'
+
+// ── Desktop Only Route Guard ──────────────────────────────────────────────────
+function DesktopOnlyRoute({ children }) {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  if (isMobile) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center p-6 bg-slate-50 dark:bg-[#0d0d14]">
+        <div className="w-16 h-16 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center mb-4">
+          <span className="text-2xl">💻</span>
+        </div>
+        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Desktop Only Feature</h2>
+        <p className="text-sm text-slate-500 dark:text-white/40 mt-2 max-w-[250px]">
+          This management page requires a larger screen. Please access it from a tablet or computer.
+        </p>
+      </div>
+    )
+  }
+  return children
+}
 
 // ── Sign-in screen shown to unauthenticated users ─────────────────────────────
 function SignInScreen() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-8 bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-8 bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200 p-4">
       {/* Brand header */}
       <div className="flex flex-col items-center gap-3 text-center">
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-2xl mb-2 shadow-brand-500/30">
           <span className="text-3xl">🏪</span>
         </div>
-        <h1 className="text-slate-900 dark:text-white font-bold text-3xl tracking-tight">Retail POS & Management</h1>
+        <h1 className="text-slate-900 dark:text-white font-bold text-2xl md:text-3xl tracking-tight">Retail POS & Management</h1>
         <p className="text-slate-500 dark:text-white/40 text-sm">Multi-Tenant Point of Sale · Inventory · Financial Analytics</p>
       </div>
 
@@ -54,17 +82,20 @@ function AppLayout() {
     <AuthWrapper>
       <BrowserRouter>
         <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200 relative">
-          <Sidebar />
-          <main className="flex-1 overflow-hidden">
+          <div className="hidden md:flex">
+            <Sidebar />
+          </div>
+          <main className="flex-1 overflow-hidden pb-[60px] md:pb-0">
             <Routes>
               <Route path="/" element={<POSPage />} />
-              <Route path="/inventory" element={<InventoryPage />} />
+              <Route path="/inventory" element={<DesktopOnlyRoute><InventoryPage /></DesktopOnlyRoute>} />
               <Route path="/expenses" element={<ExpensesPage />} />
-              <Route path="/analytics" element={<AnalyticsPage />} />
-              <Route path="/ai" element={<AIPage />} />
+              <Route path="/analytics" element={<DesktopOnlyRoute><AnalyticsPage /></DesktopOnlyRoute>} />
+              <Route path="/ai" element={<DesktopOnlyRoute><AIPage /></DesktopOnlyRoute>} />
               <Route path="/transactions" element={<TransactionsPage />} />
             </Routes>
           </main>
+          <MobileNavbar />
           <GlobalWidgetsDrawer />
         </div>
       </BrowserRouter>

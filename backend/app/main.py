@@ -8,6 +8,7 @@ load_dotenv()
 
 # Import models so SQLModel registers them before create_all
 from app.models import Tenant, User, Product, Sale, SaleItem, Expense  # noqa: F401
+from app.models.embeddings import ProductEmbedding  # noqa: F401
 from app.database import create_db_and_tables
 from app.routers.products import router as products_router
 from app.routers.pos import router as pos_router
@@ -15,6 +16,7 @@ from app.routers.analytics import router as analytics_router
 from app.routers.ai import router as ai_router
 from app.routers.auth import router as auth_router
 from app.routers.expenses import router as expenses_router
+from app.routers.ml import router as ml_router
 
 app = FastAPI(
     title="Relax Corner POS API",
@@ -54,6 +56,7 @@ app.include_router(pos_router, prefix=API_PREFIX)
 app.include_router(analytics_router, prefix=API_PREFIX)
 app.include_router(ai_router, prefix=API_PREFIX)
 app.include_router(expenses_router, prefix=API_PREFIX)
+app.include_router(ml_router, prefix=API_PREFIX)
 
 
 @app.on_event("startup")

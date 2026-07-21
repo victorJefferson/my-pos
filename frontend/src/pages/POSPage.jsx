@@ -8,6 +8,7 @@ import CartSidebar from '../components/CartSidebar'
 import PriceModal from '../components/PriceModal'
 import PaymentModal from '../components/PaymentModal'
 import RecentTransactions from '../components/RecentTransactions'
+import ScannerOverlay from '../components/ScannerOverlay'
 
 import { getCategoryEmoji } from '../utils/categoryUtils'
 
@@ -21,9 +22,11 @@ export default function POSPage() {
   const [cart, setCart] = useState([])
   const [loading, setLoading] = useState(true)
   const [showPayment, setShowPayment] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
   const [paying, setPaying] = useState(false)
   const [priceModal, setPriceModal] = useState(null)            // {product}
   const [successMsg, setSuccessMsg] = useState(null)
+  const [showMobileCart, setShowMobileCart] = useState(false)
   const searchRef = useRef(null)
   const recentRef = useRef(null)
 
@@ -132,7 +135,7 @@ export default function POSPage() {
     if (newQty <= 0) return removeFromCart(productId)
     const item = cart.find((i) => i.product_id === productId)
     if (item && newQty > item.max_stock) return
-    setCart((prev) => prev.map((i) => i.product_id === productId ? { ...i, quantity: newQty } : i))
+    setCart((prev) => prev.map((i) => i.product_id === productId ? { ...i, quantity: i.quantity + 1 } : i))
   }
 
   const clearBill = () => setCart([])
@@ -170,6 +173,7 @@ export default function POSPage() {
   }
 
   const cartTotal = cart.reduce((s, i) => s + i.unit_selling_price * i.quantity, 0)
+  const INR = (v) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(v)
 
   // ── Keyboard shortcuts ─────────────────────────────────────────────────────
   usePOSKeyboard({
@@ -179,7 +183,7 @@ export default function POSPage() {
   })
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200">
+    <div className="flex flex-col md:flex-row h-full overflow-hidden bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200">
       {/* ── Main Area ───────────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
@@ -280,7 +284,7 @@ export default function POSPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-2.5">
               {displayedProducts.map((product) => (
                 <ProductCard key={product.id} product={product} onAdd={addToCart} />
               ))}
@@ -288,27 +292,68 @@ export default function POSPage() {
           )}
         </div>
 
+        {/* Mobile View Cart Button */}
+        <div className="md:hidden p-3 border-t border-slate-200 dark:border-white/10 bg-white dark:bg-[#0d0d14]">
+          <button
+            onClick={() => setShowMobileCart(true)}
+            className={`w-full py-3 rounded-xl flex items-center justify-between px-4 shadow-lg ${
+              cart.length > 0
+                ? 'btn-brand shadow-brand-500/20'
+                : 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/40'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <ShoppingBag size={18} />
+              <span className="font-bold">{cart.reduce((a, b) => a + b.quantity, 0)} Items</span>
+            </div>
+            <span className="font-bold text-lg">{INR(cartTotal)} <span className="opacity-70 ml-1">➔</span></span>
+          </button>
+        </div>
+
         {/* Keyboard hint bar */}
-        <div className="px-5 py-2 border-t border-slate-200 dark:border-white/5 flex gap-4 text-[10px] text-slate-500 dark:text-white/20">
+        <div className="hidden md:flex px-5 py-2 border-t border-slate-200 dark:border-white/5 gap-4 text-[10px] text-slate-500 dark:text-white/20">
           <span><kbd className="bg-slate-200/80 dark:bg-white/5 px-1 rounded text-slate-700 dark:text-white/40">Space</kbd> Payment</span>
           <span><kbd className="bg-slate-200/80 dark:bg-white/5 px-1 rounded text-slate-700 dark:text-white/40">Esc</kbd> Clear</span>
           <span><kbd className="bg-slate-200/80 dark:bg-white/5 px-1 rounded text-slate-700 dark:text-white/40">Enter</kbd> Focus Search</span>
         </div>
       </div>
 
-      {/* ── Cart Sidebar ─────────────────────────────────────────────────────── */}
-      <div className="w-72 border-l border-slate-200 dark:border-white/5 bg-white dark:bg-[#0a0a14] flex flex-col overflow-hidden">
+      {/* ── Cart Sidebar (Desktop) / Drawer (Mobile) ───────────────────────── */}
+      <div className={`
+        fixed inset-0 z-50 bg-white dark:bg-[#0a0a14] flex flex-col transition-transform duration-300
+        md:relative md:z-0 md:w-72 md:translate-y-0 md:border-l md:border-slate-200 dark:md:border-white/5
+        ${showMobileCart ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}
+      `}>
+        {/* Mobile Header for Cart Drawer */}
+        <div className="md:hidden flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#111122]">
+          <h2 className="font-bold text-lg text-slate-900 dark:text-white">Current Bill</h2>
+          <button 
+            onClick={() => setShowMobileCart(false)} 
+            className="p-2 rounded-full bg-slate-200/50 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-600 dark:text-white transition-colors"
+          >
+            <X size={18}/>
+          </button>
+        </div>
+
         <CartSidebar
           items={cart}
           onRemove={removeFromCart}
           onQtyChange={changeQty}
           onClear={clearBill}
-          onCheckout={() => cart.length > 0 && setShowPayment(true)}
+          onCheckout={() => {
+            if (cart.length > 0) {
+              setShowMobileCart(false)
+              setShowPayment(true)
+            }
+          }}
+          onOpenScanner={() => setShowScanner(true)}
         />
-        <RecentTransactions
-          ref={recentRef}
-          onRefresh={refreshFrequentlySold}
-        />
+        <div className="hidden md:block">
+          <RecentTransactions
+            ref={recentRef}
+            onRefresh={refreshFrequentlySold}
+          />
+        </div>
       </div>
 
       {/* ── Modals ───────────────────────────────────────────────────────────── */}
@@ -328,6 +373,13 @@ export default function POSPage() {
           loading={paying}
         />
       )}
+
+      <ScannerOverlay
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+        onAddToCart={addToCart}
+        allProducts={allProducts}
+      />
 
       {/* ── Success Toast ─────────────────────────────────────────────────────── */}
       {successMsg && (

@@ -9,6 +9,7 @@ from app.database import get_session
 from app.auth import get_current_user
 from app.models.product import Product
 from app.models.sale import Sale, SaleItem, PaymentMode
+from app.models.expense import Expense
 from app.schemas.sale import SaleCreate, SaleRead, SaleItemRead, SaleItemQtyUpdate
 
 router = APIRouter(prefix="/pos", tags=["pos"])
@@ -363,3 +364,48 @@ def update_sale_item_qty(
             for si in final_items
         ],
     )
+
+
+@router.delete("/purge-transactions", dependencies=[Depends(get_current_user)])
+def purge_transactions(
+    tenant_id: uuid.UUID,
+    include_expenses: bool = True,
+    db: Session = Depends(get_session)
+):
+    """
+    Purge all historical sales, sale items, and optionally expenses for a tenant to free DB storage.
+    Preserves all products (catalog/stock), embeddings (ML visual fingerprints), and store account data.
+    """
+    sales = db.exec(select(Sale).where(Sale.tenant_id == tenant_id)).all()
+    sale_ids = [s.id for s in sales]
+
+    deleted_sale_items = 0
+    if sale_ids:
+        sale_items = db.exec(select(SaleItem).where(SaleItem.sale_id.in_(sale_ids))).all()
+        deleted_sale_items = len(sale_items)
+        for si in sale_items:
+            db.delete(si)
+        # Flush child records FIRST to satisfy foreign key constraints before deleting parent sales
+        db.flush()
+
+        for s in sales:
+            db.delete(s)
+        db.flush()
+
+    deleted_expenses = 0
+    if include_expenses:
+        expenses = db.exec(select(Expense).where(Expense.tenant_id == tenant_id)).all()
+        deleted_expenses = len(expenses)
+        for ex in expenses:
+            db.delete(ex)
+        db.flush()
+
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": "Transaction history purged successfully.",
+        "deleted_sales": len(sales),
+        "deleted_sale_items": deleted_sale_items,
+        "deleted_expenses": deleted_expenses,
+    }

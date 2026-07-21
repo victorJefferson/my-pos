@@ -17,9 +17,12 @@
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.61.9",
+    "@tensorflow-models/mobilenet": "^2.1.1",
+    "@tensorflow/tfjs": "^4.22.0",
     "axios": "^1.18.1",
     "lucide-react": "^1.25.0",
     "react-router-dom": "^7.18.1",
+    "react-webcam": "^7.2.0",
     "recharts": "^3.9.2"
   }
 }

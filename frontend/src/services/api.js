@@ -101,6 +101,9 @@ export const posApi = {
 
   deleteItem: (saleId, itemId) =>
     api.delete(`/pos/sales/${saleId}/items/${itemId}`, { params: { tenant_id: getTenantId() } }),
+
+  purgeTransactions: (includeExpenses = true) =>
+    api.delete('/pos/purge-transactions', { params: { tenant_id: getTenantId(), include_expenses: includeExpenses } }),
 }
 
 // ── Expenses ──────────────────────────────────────────────────────────────────
@@ -140,6 +143,15 @@ export const aiApi = {
     api.get('/ai/eod-summary', {
       params: { tenant_id: getTenantId(), target_date: targetDate || undefined },
     }),
+}
+
+// ── ML (Image Recognition) ────────────────────────────────────────────────────
+export const mlApi = {
+  recognize: (vector) =>
+    api.post('/ml/recognize', { vector }, { params: { tenant_id: getTenantId() } }),
+
+  teach: (productId, vector) =>
+    api.post('/ml/teach', { product_id: productId, vector }, { params: { tenant_id: getTenantId() } }),
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
