@@ -11,7 +11,6 @@ import {
 import { analyticsApi } from '../services/api'
 import StatCard from '../components/StatCard'
 import ExportReportModal from '../components/ExportReportModal'
-import WidgetsDrawer from '../components/WidgetsDrawer'
 import { getCategoryEmoji } from '../utils/categoryUtils'
 
 const INR = (n) => `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
@@ -82,7 +81,6 @@ export default function AnalyticsPage() {
 
   return (
     <div className="flex flex-col h-screen overflow-auto px-6 py-5 gap-6 bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200">
-      <WidgetsDrawer isOpen={showWidgetsDrawer} onClose={() => setShowWidgetsDrawer(false)} />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -107,18 +105,10 @@ export default function AnalyticsPage() {
           </button>
           <button
             onClick={() => setShowExportModal(true)}
-            className="btn-ghost flex items-center gap-2 text-sm"
+            className="btn-glow flex items-center gap-2 text-sm"
           >
             <Download size={14} />
             Export Report
-          </button>
-          <button
-            onClick={() => setShowWidgetsDrawer(true)}
-            className="btn-glow flex items-center gap-1.5 text-sm"
-          >
-            <LayoutGrid size={14} />
-            View Widgets
-            <ChevronRight size={14} />
           </button>
         </div>
       </div>
@@ -303,11 +293,6 @@ export default function AnalyticsPage() {
       {/* Export Report Modal */}
       {showExportModal && (
         <ExportReportModal onClose={() => setShowExportModal(false)} />
-      )}
-
-      {/* Widgets Slide-Over Drawer */}
-      {showWidgetsDrawer && (
-        <WidgetsDrawer data={data} onClose={() => setShowWidgetsDrawer(false)} />
       )}
     </div>
   )

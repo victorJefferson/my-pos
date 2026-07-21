@@ -13,6 +13,8 @@ import AnalyticsPage from './pages/AnalyticsPage'
 import AIPage from './pages/AIPage'
 import TransactionsPage from './pages/TransactionsPage'
 
+import GlobalWidgetsDrawer from './components/GlobalWidgetsDrawer'
+
 // ── Sign-in screen shown to unauthenticated users ─────────────────────────────
 function SignInScreen() {
   return (
@@ -51,7 +53,7 @@ function AppLayout() {
   return (
     <AuthWrapper>
       <BrowserRouter>
-        <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200">
+        <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200 relative">
           <Sidebar />
           <main className="flex-1 overflow-hidden">
             <Routes>
@@ -63,6 +65,7 @@ function AppLayout() {
               <Route path="/transactions" element={<TransactionsPage />} />
             </Routes>
           </main>
+          <GlobalWidgetsDrawer />
         </div>
       </BrowserRouter>
     </AuthWrapper>
