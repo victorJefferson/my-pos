@@ -15,6 +15,7 @@ import {
   Check,
   X,
   Loader2,
+  History,
 } from 'lucide-react'
 import { UserButton, useUser } from '@clerk/clerk-react'
 import { useTheme } from '../context/ThemeContext'
@@ -22,6 +23,7 @@ import { authApi } from '../services/api'
 
 const navItems = [
   { to: '/', icon: ShoppingCart, label: 'POS Billing', exact: true },
+  { to: '/transactions', icon: History, label: 'Transactions' },
   { to: '/inventory', icon: Package, label: 'Inventory' },
   { to: '/expenses', icon: Receipt, label: 'Expenses' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },

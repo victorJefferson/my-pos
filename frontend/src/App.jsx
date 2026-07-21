@@ -11,6 +11,7 @@ import InventoryPage from './pages/InventoryPage'
 import ExpensesPage from './pages/ExpensesPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import AIPage from './pages/AIPage'
+import TransactionsPage from './pages/TransactionsPage'
 
 // ── Sign-in screen shown to unauthenticated users ─────────────────────────────
 function SignInScreen() {
@@ -59,6 +60,7 @@ function AppLayout() {
               <Route path="/expenses" element={<ExpensesPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/ai" element={<AIPage />} />
+              <Route path="/transactions" element={<TransactionsPage />} />
             </Routes>
           </main>
         </div>
