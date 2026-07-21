@@ -1,7 +1,7 @@
 import { AlertTriangle } from 'lucide-react'
 
 export default function LowStockBadge({ qty }) {
-  if (qty >= 10) return null
+  if (qty > 10) return null
   return (
     <span className="badge-low-stock">
       <AlertTriangle size={10} />
