@@ -1,20 +1,10 @@
 import { Plus } from 'lucide-react'
-
-const CATEGORY_EMOJI = {
-  IceCream: '🍦',
-  CoolDrink: '🥤',
-  Snack: '🍿',
-  Dairy: '🥛',
-  Bakery: '🍞',
-  'Personal Care': '🧴',
-  Stationery: '📝',
-  Misc: '📦',
-}
+import { getCategoryEmoji } from '../utils/categoryUtils'
 
 export default function ProductCard({ product, onAdd }) {
   const hasPrice = product.selling_price !== null && product.selling_price !== undefined
   const outOfStock = product.stock_quantity === 0
-  const emoji = CATEGORY_EMOJI[product.category] || '📦'
+  const emoji = getCategoryEmoji(product.category, product.name)
 
   return (
     <button

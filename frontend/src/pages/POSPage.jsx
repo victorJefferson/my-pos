@@ -9,10 +9,7 @@ import PriceModal from '../components/PriceModal'
 import PaymentModal from '../components/PaymentModal'
 import RecentTransactions from '../components/RecentTransactions'
 
-const CATEGORY_EMOJI = {
-  All: '🏪', IceCream: '🍦', CoolDrink: '🥤', Snack: '🍿',
-  Dairy: '🥛', Bakery: '🍞', 'Personal Care': '🧴', Stationery: '📝', Misc: '📦',
-}
+import { getCategoryEmoji } from '../utils/categoryUtils'
 
 export default function POSPage() {
   // ── States ─────────────────────────────────────────────────────────────────
@@ -230,7 +227,7 @@ export default function POSPage() {
               }}
               className={`category-tab ${activeCategory === cat ? 'active' : ''}`}
             >
-              {CATEGORY_EMOJI[cat] || '📦'} {cat}
+              {getCategoryEmoji(cat)} {cat}
             </button>
           ))}
         </div>
