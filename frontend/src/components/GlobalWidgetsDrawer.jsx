@@ -43,25 +43,25 @@ export default function GlobalWidgetsDrawer() {
 
   return (
     <>
-      {/* ── Sleek Floating Action Pill (Visible on all screens) ────────────────── */}
+      {/* ── Seamless Right-Bezel Puller Handle (Vertically Centered) ────────────────── */}
       <button
         onClick={() => setOpen((prev) => !prev)}
         className={`
-          fixed bottom-6 right-6 z-40
-          flex items-center gap-2.5 px-4 py-2.5 rounded-full
-          bg-white dark:bg-[#18182a] text-slate-800 dark:text-white
-          border border-slate-200 dark:border-white/10
-          shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95
-          transition-all duration-200 cursor-pointer font-semibold text-xs
-          ${open ? 'opacity-0 pointer-events-none scale-90' : 'opacity-100 scale-100'}
+          fixed right-0 top-1/2 -translate-y-1/2 z-40
+          flex items-center justify-center py-4 px-1 rounded-l-xl
+          bg-white/90 dark:bg-[#161626]/90 backdrop-blur-md
+          text-slate-600 dark:text-white/70 hover:text-brand-600 dark:hover:text-brand-400
+          border-l border-y border-slate-200/80 dark:border-white/10
+          shadow-xl hover:shadow-2xl hover:pl-2
+          transition-all duration-200 cursor-pointer group
+          ${open ? 'translate-x-full opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}
         `}
         title="View Store Widgets"
       >
-        <div className="w-6 h-6 rounded-lg bg-brand-500/15 border border-brand-500/30 flex items-center justify-center text-brand-600 dark:text-brand-400">
-          <LayoutGrid size={14} />
+        <div className="flex flex-col items-center gap-1.5">
+          <ChevronLeft size={16} className="group-hover:-translate-x-0.5 transition-transform text-slate-400 dark:text-white/40" />
+          <LayoutGrid size={13} className="text-brand-600 dark:text-brand-400" />
         </div>
-        <span>Store Widgets</span>
-        <ChevronLeft size={14} className="text-slate-400 dark:text-white/40" />
       </button>
 
       {/* ── Slide-Over Panel Container ───────────────────────────────────────────── */}
