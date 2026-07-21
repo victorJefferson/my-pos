@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, ChevronLeft, Flame, TrendingUp, AlertTriangle, AlertCircle, RefreshCw, Loader2, LayoutGrid } from 'lucide-react'
 import { analyticsApi } from '../services/api'
@@ -10,9 +10,13 @@ export default function GlobalWidgetsDrawer() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
 
-  // Magnetic gravity & edge proximity state
+  // Fluid water-like tracking refs
+  const buttonRef = useRef(null)
+  const targetYRef = useRef(window.innerHeight / 2)
+  const currentYRef = useRef(window.innerHeight / 2)
+  const animFrameRef = useRef(null)
+
   const [visible, setVisible] = useState(false)
-  const [posY, setPosY] = useState(() => window.innerHeight / 2)
   const [isHovered, setIsHovered] = useState(false)
 
   const loadData = useCallback(async () => {
@@ -39,19 +43,40 @@ export default function GlobalWidgetsDrawer() {
     }
   }, [open, loadData])
 
-  // Mousemove listener for right edge proximity and magnetic Y tracking
+  // Fluid 60fps Lerp loop for liquid water-like cursor tracking
+  useEffect(() => {
+    if (open) return
+
+    const updatePosition = () => {
+      const diff = targetYRef.current - currentYRef.current
+      if (Math.abs(diff) > 0.05) {
+        currentYRef.current += diff * 0.16
+        if (buttonRef.current) {
+          buttonRef.current.style.top = `${currentYRef.current}px`
+        }
+      }
+      animFrameRef.current = requestAnimationFrame(updatePosition)
+    }
+
+    animFrameRef.current = requestAnimationFrame(updatePosition)
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
+    }
+  }, [open])
+
+  // Mousemove listener for right edge proximity and target Y tracking
   useEffect(() => {
     if (open) return
 
     const handleMouseMove = (e) => {
       const distanceFromRight = window.innerWidth - e.clientX
       const isYInSafeZone = e.clientY >= 70 && e.clientY <= window.innerHeight - 200
-      const isNearEdge = distanceFromRight <= 8 && isYInSafeZone
+      const isNearEdge = distanceFromRight <= 30 && isYInSafeZone
 
-      if (isNearEdge) {
+      if (isNearEdge || (isHovered && isYInSafeZone)) {
         setVisible(true)
         const clampedY = Math.max(70, Math.min(window.innerHeight - 200, e.clientY))
-        setPosY(clampedY)
+        targetYRef.current = clampedY
       } else if (!isHovered) {
         setVisible(false)
       }
@@ -77,14 +102,15 @@ export default function GlobalWidgetsDrawer() {
 
   return (
     <>
-      {/* ── Minimal Cursor-Tracking Puller Button ─────────────────────────────── */}
+      {/* ── Fluid Water-Tracking Puller Button ─────────────────────────────── */}
       <div
+        ref={buttonRef}
         style={{
-          top: `${posY}px`,
+          top: `${currentYRef.current}px`,
         }}
         className={`
           fixed right-0 z-40 -translate-y-1/2 pointer-events-auto
-          transition-all duration-150 ease-out
+          transition-transform transition-opacity duration-200 ease-out
           ${open || (!visible && !isHovered)
             ? 'translate-x-full opacity-0 pointer-events-none'
             : 'translate-x-0 opacity-100'}
