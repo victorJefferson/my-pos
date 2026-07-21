@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import {
   TrendingUp, DollarSign, ShoppingBag, Receipt, BarChart3,
-  Loader2, RefreshCw, Banknote, Smartphone, CreditCard, Calendar, Wallet, Download,
-  Flame, AlertTriangle, AlertCircle, ChevronRight, LayoutGrid, Database
+  RefreshCw, Banknote, Smartphone, CreditCard, Calendar, Wallet, Download,
+  ChevronDown, ChevronUp, Database, Search
 } from 'lucide-react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell
+  Tooltip, ResponsiveContainer
 } from 'recharts'
 import { analyticsApi } from '../services/api'
 import StatCard from '../components/StatCard'
@@ -46,6 +46,8 @@ export default function AnalyticsPage() {
   const [chartMode, setChartMode] = useState('daily')  // 'daily' | 'monthly'
   const [showExportModal, setShowExportModal] = useState(false)
   const [showPurgeModal, setShowPurgeModal] = useState(false)
+  const [sortConfig, setSortConfig] = useState({ key: 'total_quantity', direction: 'desc' })
+  const [searchQuery, setSearchQuery] = useState('')
 
   const load = async () => {
     setLoading(true)
@@ -67,6 +69,45 @@ export default function AnalyticsPage() {
   const pb = data?.payment_breakdown
   const catExpenses = data?.category_expenses || []
   const chartData = chartMode === 'daily' ? data?.daily_chart : data?.monthly_chart
+  const dateSoldItems = data?.date_sold_items || []
+
+  const filteredSoldItems = dateSoldItems.filter(item => 
+    item.product_name.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const sortedDateSoldItems = [...filteredSoldItems].sort((a, b) => {
+    let valA = a[sortConfig.key]
+    let valB = b[sortConfig.key]
+
+    if (['total_revenue', 'total_quantity'].includes(sortConfig.key)) {
+      valA = Number(valA)
+      valB = Number(valB)
+    }
+
+    // Calculate dynamic average rate for sorting if the key is 'avg_rate'
+    if (sortConfig.key === 'avg_rate') {
+      valA = a.total_quantity > 0 ? (Number(a.total_revenue) / a.total_quantity) : 0
+      valB = b.total_quantity > 0 ? (Number(b.total_revenue) / b.total_quantity) : 0
+    }
+
+    if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1
+    if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1
+    return 0
+  })
+
+  const toggleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc'
+    }))
+  }
+
+  const SortIcon = ({ field }) => {
+    if (sortConfig.key !== field) return null
+    return sortConfig.direction === 'asc'
+      ? <ChevronUp size={14} className="inline ml-1 text-brand-500" />
+      : <ChevronDown size={14} className="inline ml-1 text-brand-500" />
+  }
 
   const pieData = pb ? [
     { name: 'Cash', value: parseFloat(pb.cash), color: PAYMENT_COLORS.CASH, count: pb.cash_count },
@@ -343,6 +384,86 @@ export default function AnalyticsPage() {
           ))}
         </div>
       )}
+
+      {/* Selected Date Sold Items */}
+      <div className="glass-card p-5 mt-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <h3 className="text-slate-900 dark:text-white font-semibold text-sm flex items-center gap-2">
+            <ShoppingBag size={16} className="text-brand-600 dark:text-brand-400" />
+            Items Sold
+          </h3>
+          <div className="relative w-full sm:w-64">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-slate-400 dark:text-white/30" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search items..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="block w-full pl-9 pr-3 py-1.5 text-sm border border-slate-200 dark:border-white/10 rounded-lg bg-white dark:bg-[#0d0d14] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+            />
+          </div>
+        </div>
+
+        {loading && !data ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="flex justify-between py-2 border-b border-slate-100 dark:border-white/5">
+                <Skeleton className="h-4 w-32 rounded" />
+                <Skeleton className="h-4 w-12 rounded" />
+                <Skeleton className="h-4 w-20 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : dateSoldItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-32 text-slate-400 dark:text-white/25 gap-2">
+            <ShoppingBag size={28} className="opacity-30" />
+            <p className="text-xs">No items sold on this date</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto overflow-y-auto max-h-[400px]">
+            <table className="w-full text-left border-collapse whitespace-nowrap">
+              <thead className="sticky top-0 z-10 bg-white dark:bg-[#0d0d14]">
+                <tr className="text-slate-500 dark:text-white/40 text-xs border-b border-slate-200 dark:border-white/5">
+                  <th className="py-3 pr-4 font-medium cursor-pointer hover:text-slate-900 dark:hover:text-white transition-colors" onClick={() => toggleSort('product_name')}>
+                    Product Name <SortIcon field="product_name" />
+                  </th>
+                  <th className="py-3 pr-4 font-medium cursor-pointer hover:text-slate-900 dark:hover:text-white transition-colors" onClick={() => toggleSort('category')}>
+                    Category <SortIcon field="category" />
+                  </th>
+                  <th className="py-3 pr-4 font-medium text-right cursor-pointer hover:text-slate-900 dark:hover:text-white transition-colors" onClick={() => toggleSort('total_quantity')}>
+                    Quantity Sold <SortIcon field="total_quantity" />
+                  </th>
+                  <th className="py-3 pr-4 font-medium text-right cursor-pointer hover:text-slate-900 dark:hover:text-white transition-colors" onClick={() => toggleSort('avg_rate')}>
+                    Avg Rate <SortIcon field="avg_rate" />
+                  </th>
+                  <th className="py-3 font-medium text-right cursor-pointer hover:text-slate-900 dark:hover:text-white transition-colors" onClick={() => toggleSort('total_revenue')}>
+                    Revenue <SortIcon field="total_revenue" />
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5 text-sm">
+                {sortedDateSoldItems.map((item) => {
+                  const avgRate = item.total_quantity > 0 ? (item.total_revenue / item.total_quantity) : 0
+                  return (
+                    <tr key={item.product_id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                      <td className="py-3 pr-4 text-slate-900 dark:text-white font-medium flex items-center gap-2">
+                        <span className="text-base">{getCategoryEmoji(item.category, item.product_name)}</span>
+                        {item.product_name}
+                      </td>
+                      <td className="py-3 pr-4 text-slate-500 dark:text-white/50">{item.category}</td>
+                      <td className="py-3 pr-4 text-right font-bold text-slate-900 dark:text-white">{item.total_quantity}</td>
+                      <td className="py-3 pr-4 text-right text-slate-500 dark:text-white/60">{INR(avgRate)}</td>
+                      <td className="py-3 text-right font-medium text-brand-600 dark:text-brand-400">{INR(item.total_revenue)}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Modals */}
       {showExportModal && (

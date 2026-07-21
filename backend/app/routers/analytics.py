@@ -328,6 +328,44 @@ def get_summary(
         for p in out_prods
     ]
 
+    # --- Date Specific Sold Items (target_date) ---
+    today_sale_ids = [s.id for s in today_sales]
+    today_sale_items = db.exec(select(SaleItem).where(SaleItem.sale_id.in_(today_sale_ids))).all() if today_sale_ids else []
+    
+    today_product_ids = list({si.product_id for si in today_sale_items})
+    today_products_map = {}
+    if today_product_ids:
+        today_prods = db.exec(select(Product).where(Product.id.in_(today_product_ids))).all()
+        today_products_map = {p.id: p for p in today_prods}
+
+    today_sold_agg = {}
+    for si in today_sale_items:
+        p = today_products_map.get(si.product_id)
+        pname = p.name if p else (si.product_name or "Product")
+        pcat = p.category if p else "Misc"
+        if si.product_id not in today_sold_agg:
+            today_sold_agg[si.product_id] = {
+                "id": si.product_id,
+                "name": pname,
+                "category": pcat,
+                "quantity": 0,
+                "revenue": Decimal("0")
+            }
+        today_sold_agg[si.product_id]["quantity"] += si.quantity
+        today_sold_agg[si.product_id]["revenue"] += (si.total_price if si.total_price > 0 else (si.unit_selling_price * si.quantity))
+
+    date_sold_sorted = sorted(today_sold_agg.values(), key=lambda x: x["quantity"], reverse=True)
+    date_sold_items = [
+        TopSoldItem(
+            product_id=x["id"],
+            product_name=x["name"],
+            category=x["category"],
+            total_quantity=x["quantity"],
+            total_revenue=x["revenue"],
+        )
+        for x in date_sold_sorted
+    ]
+
     return AnalyticsSummaryResponse(
         today=today_summary,
         payment_breakdown=payment_breakdown,
@@ -336,6 +374,7 @@ def get_summary(
         monthly_chart=monthly_chart,
         top_sold_items=top_sold_items,
         top_profit_items=top_profit_items,
+        date_sold_items=date_sold_items,
         low_stock_items=low_stock_items,
         out_of_stock_items=out_of_stock_items,
     )

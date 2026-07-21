@@ -71,6 +71,7 @@ class AnalyticsSummaryResponse(BaseModel):
     monthly_chart: List[ChartPoint]
     top_sold_items: List[TopSoldItem] = []
     top_profit_items: List[TopProfitItem] = []
+    date_sold_items: List[TopSoldItem] = []
     low_stock_items: List[StockAlertItem] = []
     out_of_stock_items: List[StockAlertItem] = []
 
