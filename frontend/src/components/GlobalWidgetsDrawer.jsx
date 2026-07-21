@@ -38,13 +38,12 @@ export default function GlobalWidgetsDrawer() {
 
     const handleMouseMove = (e) => {
       const distanceFromRight = window.innerWidth - e.clientX
-      // Reveal when cursor is within 45px of the right screen edge or hovering the button
-      const isNearEdge = distanceFromRight <= 45
+      const isYInSafeZone = e.clientY >= 70 && e.clientY <= window.innerHeight - 200
+      const isNearEdge = distanceFromRight <= 45 && isYInSafeZone
 
-      if (isNearEdge || isHovered) {
+      if (isNearEdge) {
         setVisible(true)
-        // Clamp Y position cleanly so it doesn't collide with screen edges
-        const clampedY = Math.max(60, Math.min(window.innerHeight - 60, e.clientY))
+        const clampedY = Math.max(70, Math.min(window.innerHeight - 200, e.clientY))
         setPosY(clampedY)
       } else if (!isHovered) {
         setVisible(false)
@@ -88,7 +87,7 @@ export default function GlobalWidgetsDrawer() {
           onClick={() => setOpen(true)}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          className="group cursor-pointer flex items-center gap-1.5 py-2 px-3 rounded-l-xl bg-slate-900/90 dark:bg-[#18182a]/95 text-white shadow-xl border-l border-y border-white/15 backdrop-blur-md hover:bg-brand-600 dark:hover:bg-brand-600 transition-colors active:scale-95"
+          className="group cursor-pointer flex items-center gap-1.5 py-2 px-3 rounded-l-xl bg-slate-900/95 dark:bg-[#18182a]/95 text-white shadow-xl border-l border-y border-white/15 backdrop-blur-md active:scale-95"
           title="View Store Widgets"
         >
           <ChevronLeft size={15} className="group-hover:-translate-x-0.5 transition-transform text-white/80 shrink-0" />
