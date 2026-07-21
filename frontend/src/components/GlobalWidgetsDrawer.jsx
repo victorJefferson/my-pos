@@ -71,38 +71,29 @@ export default function GlobalWidgetsDrawer() {
 
   return (
     <>
-      {/* ── Magnetic Liquid Jelly Puller Button ───────────────────────────────── */}
+      {/* ── Minimal Cursor-Tracking Puller Button ─────────────────────────────── */}
       <div
         style={{
           top: `${posY}px`,
         }}
         className={`
           fixed right-0 z-40 -translate-y-1/2 pointer-events-auto
-          animate-jelly
+          transition-all duration-150 ease-out
           ${open || (!visible && !isHovered)
-            ? 'translate-x-full opacity-0 pointer-events-none scale-75'
-            : 'translate-x-0 opacity-100 scale-100'}
+            ? 'translate-x-full opacity-0 pointer-events-none'
+            : 'translate-x-0 opacity-100'}
         `}
       >
         <button
           onClick={() => setOpen(true)}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          className={`
-            group cursor-pointer flex items-center gap-2.5 py-2.5 px-3.5 rounded-l-2xl
-            bg-gradient-to-r from-brand-600 via-indigo-600 to-purple-600
-            text-white shadow-[0_8px_25px_rgba(124,58,237,0.45)]
-            border-l-2 border-y border-white/20
-            hover:shadow-[0_12px_30px_rgba(124,58,237,0.65)] hover:pr-4.5
-            transition-all duration-200 active:scale-95 active:rounded-l-3xl
-          `}
+          className="group cursor-pointer flex items-center gap-1.5 py-2 px-3 rounded-l-xl bg-slate-900/90 dark:bg-[#18182a]/95 text-white shadow-xl border-l border-y border-white/15 backdrop-blur-md hover:bg-brand-600 dark:hover:bg-brand-600 transition-colors active:scale-95"
           title="View Store Widgets"
         >
-          <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform text-white/90 shrink-0" />
-          <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
-            <LayoutGrid size={13} className="text-white" />
-          </div>
-          <span className="text-xs font-bold tracking-wide whitespace-nowrap pr-0.5">
+          <ChevronLeft size={15} className="group-hover:-translate-x-0.5 transition-transform text-white/80 shrink-0" />
+          <LayoutGrid size={13} className="text-brand-400 shrink-0" />
+          <span className="text-xs font-semibold tracking-tight whitespace-nowrap">
             Widgets
           </span>
         </button>
