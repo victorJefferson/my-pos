@@ -34,6 +34,7 @@ export default function TransactionsPage() {
   const [filterMode, setFilterMode] = useState('ALL')        // ALL | CASH | UPI | CARD
   const [expandedId, setExpandedId] = useState(null)
   const [deleting, setDeleting] = useState(null)
+  const [deletingItem, setDeletingItem] = useState(null)   // item id being deleted
   const [editState, setEditState] = useState({})             // { [itemId]: { qty, saving } }
 
   const load = useCallback(async () => {
@@ -62,8 +63,42 @@ export default function TransactionsPage() {
     return true
   })
 
-  const totalRevenue = filtered.reduce((acc, s) => acc + parseFloat(s.total_amount), 0)
-  const totalProfit  = filtered.reduce((acc, s) => acc + parseFloat(s.total_profit), 0)
+  // Always compute totals from items (sale.total_amount can be stale if items were edited)
+  const getSaleTotals = (sale) => {
+    const total  = sale.items.reduce((s, i) => s + parseFloat(i.total_price), 0)
+    const cost   = sale.items.reduce((s, i) => s + parseFloat(i.unit_cost_price) * i.quantity, 0)
+    const profit = total - cost
+    return { total, cost, profit }
+  }
+
+  const totalRevenue = filtered.reduce((acc, s) => acc + getSaleTotals(s).total, 0)
+  const totalProfit  = filtered.reduce((acc, s) => acc + getSaleTotals(s).profit, 0)
+
+  /* ─── Delete single item ───────────────────────────────────────── */
+  const handleDeleteItem = async (sale, item) => {
+    const isLast = sale.items.length === 1
+    const msg = isLast
+      ? `Remove "${item.product_name || 'this item'}"? It's the only item — the whole transaction will be voided and stock restored.`
+      : `Remove "${item.product_name || 'this item'}" (×${item.quantity}) from Invoice #${sale.invoice_number}? Stock will be restored.`
+    if (!window.confirm(msg)) return
+    setDeletingItem(item.id)
+    try {
+      await posApi.deleteItem(sale.id, item.id)
+      if (isLast) {
+        // Whole sale gone — remove from list
+        setSales(prev => prev.filter(s => s.id !== sale.id))
+        setExpandedId(null)
+      } else {
+        // Refresh the sale in the list
+        const res = await posApi.recentSales(50)
+        setSales(res.data)
+      }
+    } catch (e) {
+      alert('Failed to remove item: ' + (e.response?.data?.detail || e.message))
+    } finally {
+      setDeletingItem(null)
+    }
+  }
 
   /* ─── Delete ─────────────────────────────────────────────────────────────── */
   const handleDelete = async (sale) => {
@@ -206,10 +241,8 @@ export default function TransactionsPage() {
             const badge = PAYMENT_BADGE[sale.payment_mode] || PAYMENT_BADGE.CASH
             const isExpanded = expandedId === sale.id
             const isDeleting = deleting === sale.id
-            const profit = parseFloat(sale.total_profit)
-            const margin = parseFloat(sale.total_amount) > 0
-              ? (profit / parseFloat(sale.total_amount) * 100).toFixed(1)
-              : '0.0'
+            const { total: saleTotal, cost: saleCost, profit: saleProfit } = getSaleTotals(sale)
+            const margin = saleTotal > 0 ? (saleProfit / saleTotal * 100).toFixed(1) : '0.0'
 
             return (
               <div
@@ -250,15 +283,15 @@ export default function TransactionsPage() {
 
                   {/* Profit */}
                   <div className="text-center hidden md:block">
-                    <p className={`text-lg font-bold ${profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
-                      ₹{profit.toFixed(2)}
+                    <p className={`text-lg font-bold ${saleProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+                      ₹{saleProfit.toFixed(2)}
                     </p>
                     <p className="text-[10px] text-slate-400 dark:text-white/30">{margin}% margin</p>
                   </div>
 
                   {/* Total + payment badge */}
                   <div className="text-right shrink-0">
-                    <p className="text-xl font-black text-slate-900 dark:text-white">₹{parseFloat(sale.total_amount).toFixed(2)}</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white">₹{saleTotal.toFixed(2)}</p>
                     <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5 ${badge.cls}`}>
                       {badge.label}
                     </span>
@@ -356,6 +389,17 @@ export default function TransactionsPage() {
                                   >
                                     <Edit2 size={13} />
                                   </button>
+                                  <button
+                                    onClick={() => handleDeleteItem(sale, item)}
+                                    disabled={deletingItem === item.id}
+                                    title="Remove this item from transaction"
+                                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-slate-100 hover:bg-red-50 dark:bg-white/5 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 dark:text-white/30 dark:hover:text-red-400 transition-all"
+                                  >
+                                    {deletingItem === item.id
+                                      ? <Loader2 size={13} className="animate-spin text-red-400" />
+                                      : <X size={13} />
+                                    }
+                                  </button>
                                 </>
                               )}
                             </div>
@@ -376,18 +420,18 @@ export default function TransactionsPage() {
                       <div className="flex items-center gap-6">
                         <div>
                           <p className="text-[10px] text-brand-500 dark:text-brand-400 font-medium uppercase tracking-wider">Cost</p>
-                          <p className="text-sm font-bold text-slate-600 dark:text-white/70">₹{parseFloat(sale.total_cost).toFixed(2)}</p>
+                          <p className="text-sm font-bold text-slate-600 dark:text-white/70">₹{saleCost.toFixed(2)}</p>
                         </div>
                         <div>
                           <p className="text-[10px] text-brand-500 dark:text-brand-400 font-medium uppercase tracking-wider">Profit</p>
-                          <p className={`text-sm font-bold ${profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
-                            ₹{profit.toFixed(2)} ({margin}%)
+                          <p className={`text-sm font-bold ${saleProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+                            ₹{saleProfit.toFixed(2)} ({margin}%)
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] text-brand-500 dark:text-brand-400 font-medium uppercase tracking-wider">Total</p>
-                        <p className="text-lg font-black text-brand-700 dark:text-brand-300">₹{parseFloat(sale.total_amount).toFixed(2)}</p>
+                        <p className="text-lg font-black text-brand-700 dark:text-brand-300">₹{saleTotal.toFixed(2)}</p>
                       </div>
                     </div>
                   </div>

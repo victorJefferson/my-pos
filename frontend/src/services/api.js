@@ -98,6 +98,9 @@ export const posApi = {
 
   updateItemQty: (saleId, itemId, quantity) =>
     api.patch(`/pos/sales/${saleId}/items/${itemId}`, { quantity }, { params: { tenant_id: getTenantId() } }),
+
+  deleteItem: (saleId, itemId) =>
+    api.delete(`/pos/sales/${saleId}/items/${itemId}`, { params: { tenant_id: getTenantId() } }),
 }
 
 // ── Expenses ──────────────────────────────────────────────────────────────────

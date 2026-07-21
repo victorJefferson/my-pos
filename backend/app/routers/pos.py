@@ -219,6 +219,51 @@ def delete_sale(
     db.commit()
 
 
+@router.delete("/sales/{sale_id}/items/{item_id}", status_code=204, dependencies=[Depends(get_current_user)])
+def delete_sale_item(
+    sale_id: uuid.UUID,
+    item_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    db: Session = Depends(get_session),
+):
+    """Delete a single item from a sale, restoring its stock and recalculating sale totals.
+    If it was the last item in the sale, the entire sale is deleted."""
+    sale = db.exec(
+        select(Sale).where(Sale.id == sale_id, Sale.tenant_id == tenant_id)
+    ).first()
+    if not sale:
+        raise HTTPException(status_code=404, detail="Sale not found")
+
+    item = db.exec(
+        select(SaleItem).where(SaleItem.id == item_id, SaleItem.sale_id == sale_id)
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Sale item not found")
+
+    # Restore stock for this item
+    product = db.exec(select(Product).where(Product.id == item.product_id)).first()
+    if product:
+        product.stock_quantity += item.quantity
+        db.add(product)
+
+    db.delete(item)
+    db.flush()  # flush item delete before checking remaining or deleting sale
+
+    # Check how many items remain in the sale
+    remaining = db.exec(select(SaleItem).where(SaleItem.sale_id == sale_id)).all()
+    if not remaining:
+        # Last item removed — delete the whole sale
+        db.delete(sale)
+    else:
+        # Recalculate sale totals from remaining items
+        sale.total_amount = sum(si.total_price for si in remaining)
+        sale.total_cost = sum(si.unit_cost_price * si.quantity for si in remaining)
+        sale.total_profit = sum(si.total_profit for si in remaining)
+        db.add(sale)
+
+    db.commit()
+
+
 @router.patch("/sales/{sale_id}/items/{item_id}", response_model=SaleRead, dependencies=[Depends(get_current_user)])
 def update_sale_item_qty(
     sale_id: uuid.UUID,
