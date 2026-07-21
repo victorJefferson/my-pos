@@ -10,7 +10,7 @@ from sqlmodel import select
 from app.database import get_session
 from app.auth import get_current_user
 from app.models.tenant import Tenant
-from app.models.sale import Sale, PaymentMode
+from app.models.sale import Sale, SaleItem, PaymentMode
 from app.models.expense import Expense
 from app.schemas.analytics import (
     DailySummary,
@@ -27,6 +27,33 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 def _zero() -> Decimal:
     return Decimal("0")
+
+
+def _recalculate_sales_if_needed(sales: List[Sale], db: Session):
+    """Ensure all Sale objects have total_amount, total_cost, total_profit aligned with SaleItem totals."""
+    if not sales:
+        return
+    sale_ids = [s.id for s in sales]
+    items = db.exec(select(SaleItem).where(SaleItem.sale_id.in_(sale_ids))).all()
+    items_by_sale = {}
+    for item in items:
+        items_by_sale.setdefault(item.sale_id, []).append(item)
+
+    need_commit = False
+    for sale in sales:
+        s_items = items_by_sale.get(sale.id, [])
+        if s_items:
+            tot = sum(si.total_price for si in s_items)
+            cost = sum(si.unit_cost_price * si.quantity for si in s_items)
+            prof = sum(si.total_profit for si in s_items)
+            if sale.total_amount != tot or sale.total_cost != cost or sale.total_profit != prof:
+                sale.total_amount = tot
+                sale.total_cost = cost
+                sale.total_profit = prof
+                db.add(sale)
+                need_commit = True
+    if need_commit:
+        db.commit()
 
 
 @router.get("/summary", response_model=AnalyticsSummaryResponse, dependencies=[Depends(get_current_user)])
@@ -52,6 +79,7 @@ def get_summary(
             Sale.created_at <= day_end,
         )
     ).all()
+    _recalculate_sales_if_needed(today_sales, db)
 
     # --- Today's Expenses ---
     today_expenses = db.exec(
@@ -96,6 +124,7 @@ def get_summary(
             Sale.created_at >= thirty_days_ago,
         )
     ).all()
+    _recalculate_sales_if_needed(recent_sales, db)
 
     recent_expenses = db.exec(
         select(Expense).where(
@@ -224,6 +253,7 @@ def get_analytics_report(
             Sale.created_at <= range_end,
         )
     ).all()
+    _recalculate_sales_if_needed(sales, db)
 
     expenses = db.exec(
         select(Expense).where(

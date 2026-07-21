@@ -162,14 +162,25 @@ def list_sales(
             prods = db.exec(select(Product).where(Product.id.in_(product_ids))).all()
             products_map = {p.id: p.name for p in prods}
 
+        calc_total = sum(si.total_price for si in items)
+        calc_cost = sum(si.unit_cost_price * si.quantity for si in items)
+        calc_profit = sum(si.total_profit for si in items)
+
+        if sale.total_amount != calc_total or sale.total_cost != calc_cost or sale.total_profit != calc_profit:
+            sale.total_amount = calc_total
+            sale.total_cost = calc_cost
+            sale.total_profit = calc_profit
+            db.add(sale)
+            db.commit()
+
         result.append(
             SaleRead(
                 id=sale.id,
                 tenant_id=sale.tenant_id,
                 invoice_number=sale.invoice_number,
-                total_amount=sale.total_amount,
-                total_cost=sale.total_cost,
-                total_profit=sale.total_profit,
+                total_amount=calc_total,
+                total_cost=calc_cost,
+                total_profit=calc_profit,
                 payment_mode=sale.payment_mode,
                 cashier_id=sale.cashier_id,
                 created_at=sale.created_at,
@@ -309,16 +320,13 @@ def update_sale_item_qty(
     item.total_price = item.unit_selling_price * body.quantity
     item.total_profit = (item.unit_selling_price - item.unit_cost_price) * body.quantity
     db.add(item)
+    db.flush()  # write item changes to DB before reading back for totals
 
-    # Recompute sale totals from all items
+    # Re-query ALL items fresh from DB to get reliable values (avoids identity-map stale reads)
     all_items = db.exec(select(SaleItem).where(SaleItem.sale_id == sale_id)).all()
-    # Apply pending item update
-    all_items_updated = [
-        item if si.id != item.id else item for si in all_items
-    ]
-    sale.total_amount = sum(si.total_price for si in all_items_updated)
-    sale.total_cost = sum(si.unit_cost_price * si.quantity for si in all_items_updated)
-    sale.total_profit = sum(si.total_profit for si in all_items_updated)
+    sale.total_amount = sum(si.total_price for si in all_items)
+    sale.total_cost   = sum(si.unit_cost_price * si.quantity for si in all_items)
+    sale.total_profit = sum(si.total_profit for si in all_items)
     db.add(sale)
     db.commit()
     db.refresh(sale)

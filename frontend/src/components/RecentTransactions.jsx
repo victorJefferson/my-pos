@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { ChevronDown, ChevronUp, Trash2, Clock, Receipt, Loader2 } from 'lucide-react'
 import { posApi } from '../services/api'
+import { computeSaleTotals, computeItemTotals } from '../utils/saleUtils'
 
 const PAYMENT_BADGE = {
   CASH:  { label: 'Cash', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
@@ -148,7 +149,7 @@ const RecentTransactions = forwardRef(function RecentTransactions({ onRefresh },
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span className="text-xs font-semibold text-slate-800 dark:text-white">
-                          ₹{parseFloat(sale.total_amount).toFixed(2)}
+                          ₹{computeSaleTotals(sale).total.toFixed(2)}
                         </span>
                         <button
                           onClick={e => { e.stopPropagation(); handleDelete(sale) }}
@@ -203,7 +204,7 @@ const RecentTransactions = forwardRef(function RecentTransactions({ onRefresh },
                         <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-white/5">
                           <span className="text-[10px] text-slate-400 dark:text-white/30">Total</span>
                           <span className="text-[11px] font-bold text-slate-700 dark:text-white/80">
-                            ₹{parseFloat(sale.total_amount).toFixed(2)}
+                            ₹{computeSaleTotals(sale).total.toFixed(2)}
                           </span>
                         </div>
                       </div>

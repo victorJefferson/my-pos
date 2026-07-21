@@ -4,6 +4,7 @@ import {
   ChevronDown, ChevronUp, Search, Filter, AlertTriangle,
 } from 'lucide-react'
 import { posApi } from '../services/api'
+import { computeSaleTotals, computeAggregateTotals, computeItemTotals, fmtRupee } from '../utils/saleUtils'
 
 const PAYMENT_BADGE = {
   CASH: { label: 'Cash',  cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700/40' },
@@ -63,16 +64,8 @@ export default function TransactionsPage() {
     return true
   })
 
-  // Always compute totals from items (sale.total_amount can be stale if items were edited)
-  const getSaleTotals = (sale) => {
-    const total  = sale.items.reduce((s, i) => s + parseFloat(i.total_price), 0)
-    const cost   = sale.items.reduce((s, i) => s + parseFloat(i.unit_cost_price) * i.quantity, 0)
-    const profit = total - cost
-    return { total, cost, profit }
-  }
-
-  const totalRevenue = filtered.reduce((acc, s) => acc + getSaleTotals(s).total, 0)
-  const totalProfit  = filtered.reduce((acc, s) => acc + getSaleTotals(s).profit, 0)
+  // Always compute totals from items via shared saleUtils (single source of truth)
+  const { totalRevenue, totalProfit } = computeAggregateTotals(filtered)
 
   /* ─── Delete single item ───────────────────────────────────────── */
   const handleDeleteItem = async (sale, item) => {
@@ -241,8 +234,8 @@ export default function TransactionsPage() {
             const badge = PAYMENT_BADGE[sale.payment_mode] || PAYMENT_BADGE.CASH
             const isExpanded = expandedId === sale.id
             const isDeleting = deleting === sale.id
-            const { total: saleTotal, cost: saleCost, profit: saleProfit } = getSaleTotals(sale)
-            const margin = saleTotal > 0 ? (saleProfit / saleTotal * 100).toFixed(1) : '0.0'
+            const { total: saleTotal, cost: saleCost, profit: saleProfit, margin } = computeSaleTotals(sale)
+            const marginStr = margin.toFixed(1)
 
             return (
               <div
@@ -286,7 +279,7 @@ export default function TransactionsPage() {
                     <p className={`text-lg font-bold ${saleProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
                       ₹{saleProfit.toFixed(2)}
                     </p>
-                    <p className="text-[10px] text-slate-400 dark:text-white/30">{margin}% margin</p>
+                    <p className="text-[10px] text-slate-400 dark:text-white/30">{marginStr}% margin</p>
                   </div>
 
                   {/* Total + payment badge */}
@@ -425,7 +418,7 @@ export default function TransactionsPage() {
                         <div>
                           <p className="text-[10px] text-brand-500 dark:text-brand-400 font-medium uppercase tracking-wider">Profit</p>
                           <p className={`text-sm font-bold ${saleProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
-                            ₹{saleProfit.toFixed(2)} ({margin}%)
+                            ₹{saleProfit.toFixed(2)} ({marginStr}%)
                           </p>
                         </div>
                       </div>
