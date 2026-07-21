@@ -46,7 +46,7 @@ export default function GlobalWidgetsDrawer() {
     const handleMouseMove = (e) => {
       const distanceFromRight = window.innerWidth - e.clientX
       const isYInSafeZone = e.clientY >= 70 && e.clientY <= window.innerHeight - 200
-      const isNearEdge = distanceFromRight <= 45 && isYInSafeZone
+      const isNearEdge = distanceFromRight <= 8 && isYInSafeZone
 
       if (isNearEdge) {
         setVisible(true)
