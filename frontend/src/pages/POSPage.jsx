@@ -7,6 +7,7 @@ import ProductCard from '../components/ProductCard'
 import CartSidebar from '../components/CartSidebar'
 import PriceModal from '../components/PriceModal'
 import PaymentModal from '../components/PaymentModal'
+import RecentTransactions from '../components/RecentTransactions'
 
 const CATEGORY_EMOJI = {
   All: '🏪', IceCream: '🍦', CoolDrink: '🥤', Snack: '🍿',
@@ -27,6 +28,7 @@ export default function POSPage() {
   const [priceModal, setPriceModal] = useState(null)            // {product}
   const [successMsg, setSuccessMsg] = useState(null)
   const searchRef = useRef(null)
+  const recentRef = useRef(null)
 
   // ── Initial Load: Fetch full catalog & frequently sold items ────────────────
   const loadData = useCallback(async () => {
@@ -161,6 +163,7 @@ export default function POSPage() {
       setSuccessMsg(`✅ Payment via ${paymentMode} recorded!`)
       setTimeout(() => setSuccessMsg(null), 3000)
       refreshFrequentlySold()
+      recentRef.current?.refresh()
     } catch (e) {
       alert('Checkout failed: ' + (e.response?.data?.detail || e.message))
     } finally {
@@ -296,13 +299,17 @@ export default function POSPage() {
       </div>
 
       {/* ── Cart Sidebar ─────────────────────────────────────────────────────── */}
-      <div className="w-72 border-l border-slate-200 dark:border-white/5 bg-white dark:bg-[#0a0a14] flex flex-col">
+      <div className="w-72 border-l border-slate-200 dark:border-white/5 bg-white dark:bg-[#0a0a14] flex flex-col overflow-hidden">
         <CartSidebar
           items={cart}
           onRemove={removeFromCart}
           onQtyChange={changeQty}
           onClear={clearBill}
           onCheckout={() => cart.length > 0 && setShowPayment(true)}
+        />
+        <RecentTransactions
+          ref={recentRef}
+          onRefresh={refreshFrequentlySold}
         />
       </div>
 

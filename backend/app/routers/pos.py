@@ -9,7 +9,7 @@ from app.database import get_session
 from app.auth import get_current_user
 from app.models.product import Product
 from app.models.sale import Sale, SaleItem, PaymentMode
-from app.schemas.sale import SaleCreate, SaleRead, SaleItemRead
+from app.schemas.sale import SaleCreate, SaleRead, SaleItemRead, SaleItemQtyUpdate
 
 router = APIRouter(prefix="/pos", tags=["pos"])
 
@@ -143,7 +143,7 @@ def list_sales(
     limit: int = 50,
     db: Session = Depends(get_session),
 ):
-    """List recent sales for a tenant."""
+    """List recent sales for a tenant, including product names on each item."""
     sales = db.exec(
         select(Sale)
         .where(Sale.tenant_id == tenant_id)
@@ -155,6 +155,13 @@ def list_sales(
     result = []
     for sale in sales:
         items = db.exec(select(SaleItem).where(SaleItem.sale_id == sale.id)).all()
+        # Fetch product names in bulk for this sale's items
+        product_ids = [si.product_id for si in items]
+        products_map = {}
+        if product_ids:
+            prods = db.exec(select(Product).where(Product.id.in_(product_ids))).all()
+            products_map = {p.id: p.name for p in prods}
+
         result.append(
             SaleRead(
                 id=sale.id,
@@ -170,6 +177,7 @@ def list_sales(
                     SaleItemRead(
                         id=si.id,
                         product_id=si.product_id,
+                        product_name=products_map.get(si.product_id),
                         quantity=si.quantity,
                         unit_selling_price=si.unit_selling_price,
                         unit_cost_price=si.unit_cost_price,
@@ -181,3 +189,123 @@ def list_sales(
             )
         )
     return result
+
+
+@router.delete("/sales/{sale_id}", status_code=204, dependencies=[Depends(get_current_user)])
+def delete_sale(
+    sale_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    db: Session = Depends(get_session),
+):
+    """Void a sale: restore stock for all items and delete the records."""
+    sale = db.exec(
+        select(Sale).where(Sale.id == sale_id, Sale.tenant_id == tenant_id)
+    ).first()
+    if not sale:
+        raise HTTPException(status_code=404, detail="Sale not found")
+
+    items = db.exec(select(SaleItem).where(SaleItem.sale_id == sale_id)).all()
+    for item in items:
+        product = db.exec(
+            select(Product).where(Product.id == item.product_id)
+        ).first()
+        if product:
+            product.stock_quantity += item.quantity
+            db.add(product)
+        db.delete(item)
+
+    db.delete(sale)
+    db.commit()
+
+
+@router.patch("/sales/{sale_id}/items/{item_id}", response_model=SaleRead, dependencies=[Depends(get_current_user)])
+def update_sale_item_qty(
+    sale_id: uuid.UUID,
+    item_id: uuid.UUID,
+    body: SaleItemQtyUpdate,
+    tenant_id: uuid.UUID,
+    db: Session = Depends(get_session),
+):
+    """Update the quantity of a single item in a sale, adjusting stock and sale totals."""
+    if body.quantity < 1:
+        raise HTTPException(status_code=400, detail="Quantity must be at least 1")
+
+    sale = db.exec(
+        select(Sale).where(Sale.id == sale_id, Sale.tenant_id == tenant_id)
+    ).first()
+    if not sale:
+        raise HTTPException(status_code=404, detail="Sale not found")
+
+    item = db.exec(
+        select(SaleItem).where(SaleItem.id == item_id, SaleItem.sale_id == sale_id)
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Sale item not found")
+
+    product = db.exec(select(Product).where(Product.id == item.product_id)).first()
+
+    old_qty = item.quantity
+    delta = old_qty - body.quantity  # positive means freeing stock, negative means using more
+
+    if delta < 0 and product and product.stock_quantity < abs(delta):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient stock. Only {product.stock_quantity} available.",
+        )
+
+    # Adjust stock
+    if product:
+        product.stock_quantity += delta
+        db.add(product)
+
+    # Update item totals
+    item.quantity = body.quantity
+    item.total_price = item.unit_selling_price * body.quantity
+    item.total_profit = (item.unit_selling_price - item.unit_cost_price) * body.quantity
+    db.add(item)
+
+    # Recompute sale totals from all items
+    all_items = db.exec(select(SaleItem).where(SaleItem.sale_id == sale_id)).all()
+    # Apply pending item update
+    all_items_updated = [
+        item if si.id != item.id else item for si in all_items
+    ]
+    sale.total_amount = sum(si.total_price for si in all_items_updated)
+    sale.total_cost = sum(si.unit_cost_price * si.quantity for si in all_items_updated)
+    sale.total_profit = sum(si.total_profit for si in all_items_updated)
+    db.add(sale)
+    db.commit()
+    db.refresh(sale)
+
+    # Build enriched response
+    final_items = db.exec(select(SaleItem).where(SaleItem.sale_id == sale_id)).all()
+    product_ids = [si.product_id for si in final_items]
+    products_map = {}
+    if product_ids:
+        prods = db.exec(select(Product).where(Product.id.in_(product_ids))).all()
+        products_map = {p.id: p.name for p in prods}
+
+    return SaleRead(
+        id=sale.id,
+        tenant_id=sale.tenant_id,
+        invoice_number=sale.invoice_number,
+        total_amount=sale.total_amount,
+        total_cost=sale.total_cost,
+        total_profit=sale.total_profit,
+        payment_mode=sale.payment_mode,
+        cashier_id=sale.cashier_id,
+        created_at=sale.created_at,
+        items=[
+            SaleItemRead(
+                id=si.id,
+                product_id=si.product_id,
+                product_name=products_map.get(si.product_id),
+                quantity=si.quantity,
+                unit_selling_price=si.unit_selling_price,
+                unit_cost_price=si.unit_cost_price,
+                total_price=si.total_price,
+                total_profit=si.total_profit,
+            )
+            for si in final_items
+        ],
+    )

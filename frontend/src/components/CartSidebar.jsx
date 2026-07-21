@@ -5,7 +5,7 @@ export default function CartSidebar({ items, onRemove, onQtyChange, onClear, onC
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0)
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-[#0a0a14] transition-colors duration-200">
+    <div className="flex flex-col flex-1 min-h-0 bg-white dark:bg-[#0a0a14] transition-colors duration-200">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-white/5">
         <div>

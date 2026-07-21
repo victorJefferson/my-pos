@@ -23,6 +23,7 @@ class SaleCreate(BaseModel):
 class SaleItemRead(BaseModel):
     id: uuid.UUID
     product_id: uuid.UUID
+    product_name: Optional[str] = None
     quantity: int
     unit_selling_price: Decimal
     unit_cost_price: Decimal
@@ -31,6 +32,10 @@ class SaleItemRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class SaleItemQtyUpdate(BaseModel):
+    quantity: int
 
 
 class SaleRead(BaseModel):

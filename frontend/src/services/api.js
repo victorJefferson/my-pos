@@ -92,6 +92,12 @@ export const posApi = {
 
   recentSales: (limit = 20) =>
     api.get('/pos/sales', { params: { tenant_id: getTenantId(), limit } }),
+
+  deleteSale: (saleId) =>
+    api.delete(`/pos/sales/${saleId}`, { params: { tenant_id: getTenantId() } }),
+
+  updateItemQty: (saleId, itemId, quantity) =>
+    api.patch(`/pos/sales/${saleId}/items/${itemId}`, { quantity }, { params: { tenant_id: getTenantId() } }),
 }
 
 // ── Expenses ──────────────────────────────────────────────────────────────────
