@@ -214,6 +214,7 @@ def delete_sale(
             db.add(product)
         db.delete(item)
 
+    db.flush()   # commit item deletions first so FK constraint is satisfied
     db.delete(sale)
     db.commit()
 
