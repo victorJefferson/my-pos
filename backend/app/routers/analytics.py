@@ -12,6 +12,7 @@ from app.auth import get_current_user
 from app.models.tenant import Tenant
 from app.models.sale import Sale, SaleItem, PaymentMode
 from app.models.expense import Expense
+from app.models.product import Product
 from app.schemas.analytics import (
     DailySummary,
     ChartPoint,
@@ -20,6 +21,9 @@ from app.schemas.analytics import (
     AnalyticsSummaryResponse,
     DailyReportRow,
     AnalyticsReportResponse,
+    TopSoldItem,
+    TopProfitItem,
+    StockAlertItem,
 )
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -219,12 +223,121 @@ def get_summary(
             )
         )
 
+    # --- Top Sold & Top Profit Items (last 30 days) ---
+    recent_sale_ids = [s.id for s in recent_sales]
+    sale_items = db.exec(select(SaleItem).where(SaleItem.sale_id.in_(recent_sale_ids))).all() if recent_sale_ids else []
+
+    product_ids = list({si.product_id for si in sale_items})
+    products_map = {}
+    if product_ids:
+        prods = db.exec(select(Product).where(Product.id.in_(product_ids))).all()
+        products_map = {p.id: p for p in prods}
+
+    sold_agg = {}
+    for si in sale_items:
+        p = products_map.get(si.product_id)
+        pname = p.name if p else (si.product_name or "Product")
+        pcat = p.category if p else "Misc"
+        if si.product_id not in sold_agg:
+            sold_agg[si.product_id] = {
+                "id": si.product_id,
+                "name": pname,
+                "category": pcat,
+                "quantity": 0,
+                "revenue": Decimal("0"),
+                "profit": Decimal("0"),
+            }
+        sold_agg[si.product_id]["quantity"] += si.quantity
+        sold_agg[si.product_id]["revenue"] += si.total_price
+        sold_agg[si.product_id]["profit"] += si.total_profit
+
+    # Top 5 by quantity
+    top_sold_sorted = sorted(sold_agg.values(), key=lambda x: x["quantity"], reverse=True)[:5]
+    top_sold_items = [
+        TopSoldItem(
+            product_id=x["id"],
+            product_name=x["name"],
+            category=x["category"],
+            total_quantity=x["quantity"],
+            total_revenue=x["revenue"],
+        )
+        for x in top_sold_sorted
+    ]
+
+    # Top 5 by profit
+    top_profit_sorted = sorted(sold_agg.values(), key=lambda x: x["profit"], reverse=True)[:5]
+    top_profit_items = []
+    for x in top_profit_sorted:
+        rev = float(x["revenue"])
+        prof = float(x["profit"])
+        margin = (prof / rev * 100) if rev > 0 else 0.0
+        top_profit_items.append(
+            TopProfitItem(
+                product_id=x["id"],
+                product_name=x["name"],
+                category=x["category"],
+                total_profit=x["profit"],
+                margin_pct=round(margin, 1),
+            )
+        )
+
+    # --- Low Stock Items (1 <= stock <= 10) ---
+    low_prods = db.exec(
+        select(Product)
+        .where(
+            Product.tenant_id == tenant_id,
+            Product.is_active == True,  # noqa: E712
+            Product.stock_quantity > 0,
+            Product.stock_quantity <= 10,
+        )
+        .order_by(Product.stock_quantity.asc())
+        .limit(5)
+    ).all()
+
+    low_stock_items = [
+        StockAlertItem(
+            product_id=p.id,
+            product_name=p.name,
+            category=p.category,
+            stock_quantity=p.stock_quantity,
+            selling_price=p.selling_price,
+        )
+        for p in low_prods
+    ]
+
+    # --- Out of Stock Items (stock == 0) ---
+    out_prods = db.exec(
+        select(Product)
+        .where(
+            Product.tenant_id == tenant_id,
+            Product.is_active == True,  # noqa: E712
+            Product.stock_quantity == 0,
+        )
+        .order_by(Product.name.asc())
+        .limit(5)
+    ).all()
+
+    out_of_stock_items = [
+        StockAlertItem(
+            product_id=p.id,
+            product_name=p.name,
+            category=p.category,
+            stock_quantity=p.stock_quantity,
+            selling_price=p.selling_price,
+        )
+        for p in out_prods
+    ]
+
     return AnalyticsSummaryResponse(
         today=today_summary,
         payment_breakdown=payment_breakdown,
         category_expenses=category_expenses,
         daily_chart=daily_chart,
         monthly_chart=monthly_chart,
+        top_sold_items=top_sold_items,
+        top_profit_items=top_profit_items,
+        low_stock_items=low_stock_items,
+        out_of_stock_items=out_of_stock_items,
     )
 
 

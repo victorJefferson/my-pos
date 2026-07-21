@@ -1,3 +1,4 @@
+import uuid
 from typing import Optional, List, Dict
 from decimal import Decimal
 from pydantic import BaseModel
@@ -38,12 +39,40 @@ class PaymentBreakdown(BaseModel):
     card_count: int
 
 
+class TopSoldItem(BaseModel):
+    product_id: uuid.UUID
+    product_name: str
+    category: str
+    total_quantity: int
+    total_revenue: Decimal
+
+
+class TopProfitItem(BaseModel):
+    product_id: uuid.UUID
+    product_name: str
+    category: str
+    total_profit: Decimal
+    margin_pct: float
+
+
+class StockAlertItem(BaseModel):
+    product_id: uuid.UUID
+    product_name: str
+    category: str
+    stock_quantity: int
+    selling_price: Optional[Decimal] = None
+
+
 class AnalyticsSummaryResponse(BaseModel):
     today: DailySummary
     payment_breakdown: PaymentBreakdown
     category_expenses: List[CategoryExpenseBreakdown]
     daily_chart: List[ChartPoint]
     monthly_chart: List[ChartPoint]
+    top_sold_items: List[TopSoldItem] = []
+    top_profit_items: List[TopProfitItem] = []
+    low_stock_items: List[StockAlertItem] = []
+    out_of_stock_items: List[StockAlertItem] = []
 
 
 class DailyReportRow(BaseModel):
