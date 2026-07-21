@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   TrendingUp, DollarSign, ShoppingBag, Receipt, BarChart3,
   Loader2, RefreshCw, Banknote, Smartphone, CreditCard, Calendar, Wallet, Download,
-  Flame, AlertTriangle, AlertCircle, ChevronRight, LayoutGrid
+  Flame, AlertTriangle, AlertCircle, ChevronRight, LayoutGrid, Database
 } from 'lucide-react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -11,6 +11,7 @@ import {
 import { analyticsApi } from '../services/api'
 import StatCard from '../components/StatCard'
 import ExportReportModal from '../components/ExportReportModal'
+import PurgeDataModal from '../components/PurgeDataModal'
 import { getCategoryEmoji } from '../utils/categoryUtils'
 
 const INR = (n) => `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
@@ -43,7 +44,7 @@ export default function AnalyticsPage() {
   const [targetDate, setTargetDate] = useState('')
   const [chartMode, setChartMode] = useState('daily')  // 'daily' | 'monthly'
   const [showExportModal, setShowExportModal] = useState(false)
-  const [showWidgetsDrawer, setShowWidgetsDrawer] = useState(false)
+  const [showPurgeModal, setShowPurgeModal] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -109,6 +110,14 @@ export default function AnalyticsPage() {
           >
             <Download size={14} />
             Export Report
+          </button>
+          <button
+            onClick={() => setShowPurgeModal(true)}
+            className="px-3 py-2 text-sm font-semibold rounded-xl bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/20 transition-all flex items-center gap-1.5"
+            title="Purge transaction history to free database storage"
+          >
+            <Database size={14} />
+            Cleanup DB
           </button>
         </div>
       </div>
@@ -303,9 +312,15 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Export Report Modal */}
+      {/* Modals */}
       {showExportModal && (
         <ExportReportModal onClose={() => setShowExportModal(false)} />
+      )}
+      {showPurgeModal && (
+        <PurgeDataModal
+          onClose={() => setShowPurgeModal(false)}
+          onPurgeSuccess={load}
+        />
       )}
     </div>
   )

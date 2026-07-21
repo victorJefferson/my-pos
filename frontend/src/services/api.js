@@ -101,6 +101,9 @@ export const posApi = {
 
   deleteItem: (saleId, itemId) =>
     api.delete(`/pos/sales/${saleId}/items/${itemId}`, { params: { tenant_id: getTenantId() } }),
+
+  purgeTransactions: (includeExpenses = true) =>
+    api.delete('/pos/purge-transactions', { params: { tenant_id: getTenantId(), include_expenses: includeExpenses } }),
 }
 
 // ── Expenses ──────────────────────────────────────────────────────────────────
