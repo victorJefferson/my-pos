@@ -94,14 +94,10 @@ export default function GlobalWidgetsDrawer() {
           onClick={() => setOpen(true)}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          className="group cursor-pointer flex items-center gap-1.5 py-2 px-3 rounded-l-xl bg-slate-900/95 dark:bg-[#18182a]/95 text-white shadow-xl border-l border-y border-white/15 backdrop-blur-md active:scale-95"
+          className="group cursor-pointer flex items-center justify-center py-3.5 px-1.5 rounded-l-xl bg-slate-900/95 dark:bg-[#18182a]/95 text-white shadow-xl border-l border-y border-white/15 backdrop-blur-md active:scale-95"
           title="View Store Widgets"
         >
-          <ChevronLeft size={15} className="group-hover:-translate-x-0.5 transition-transform text-white/80 shrink-0" />
-          <LayoutGrid size={13} className="text-brand-400 shrink-0" />
-          <span className="text-xs font-semibold tracking-tight whitespace-nowrap">
-            Widgets
-          </span>
+          <ChevronLeft size={22} className="group-hover:-translate-x-0.5 transition-transform text-white shrink-0" />
         </button>
       </div>
 
