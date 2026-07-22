@@ -29,7 +29,7 @@ const RecentTransactions = forwardRef(function RecentTransactions({ onRefresh },
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await posApi.recentSales(20)
+      const res = await posApi.recentSales(null, 20)
       setSales(res.data)
     } catch (e) {
       console.error('Failed to load recent sales', e)
