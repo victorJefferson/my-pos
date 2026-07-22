@@ -7,6 +7,7 @@ import { expensesApi, accountsApi } from '../services/api'
 import Skeleton from '../components/Skeleton'
 import StatCard from '../components/StatCard'
 import AddTransactionModal from '../components/AddTransactionModal'
+import DateRangeSelector from '../components/DateRangeSelector'
 
 
 export default function ExpensesPage() {
@@ -15,7 +16,7 @@ export default function ExpensesPage() {
   const [categories, setCategories] = useState([])
   const [activeCategory, setActiveCategory] = useState('All')
   const [search, setSearch] = useState('')
-  const [targetDate, setTargetDate] = useState('')
+  const [dateFilter, setDateFilter] = useState({ mode: 'today', start: null, end: null })
   const [loading, setLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
@@ -26,7 +27,8 @@ export default function ExpensesPage() {
       const [expRes, catRes, accRes] = await Promise.all([
         expensesApi.list({
           category: activeCategory !== 'All' ? activeCategory : undefined,
-          target_date: targetDate || undefined,
+          start_date: dateFilter.mode === 'today' ? new Date().toISOString().split('T')[0] : dateFilter.start || undefined,
+          end_date: dateFilter.mode === 'today' ? new Date().toISOString().split('T')[0] : dateFilter.end || undefined,
           limit: 200,
         }),
         expensesApi.categories(),
@@ -40,7 +42,7 @@ export default function ExpensesPage() {
     } finally {
       setLoading(false)
     }
-  }, [activeCategory, targetDate])
+  }, [activeCategory, dateFilter])
 
   useEffect(() => {
     loadData()
@@ -93,15 +95,10 @@ export default function ExpensesPage() {
           <p className="text-slate-500 dark:text-white/40 text-xs mt-0.5">Record transportation, procurement, utilities & custom bills</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30" size={14} />
-            <input
-              type="date"
-              className="input-field pl-8 text-sm py-1.5 w-36"
-              value={targetDate}
-              onChange={(e) => setTargetDate(e.target.value)}
-            />
-          </div>
+          <DateRangeSelector
+            loading={loading}
+            onFilterChange={(newFilter) => setDateFilter(newFilter)}
+          />
           <button onClick={loadData} className="btn-ghost flex items-center gap-2 text-sm">
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </button>

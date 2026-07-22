@@ -14,6 +14,7 @@ import ExportReportModal from '../components/ExportReportModal'
 import PurgeDataModal from '../components/PurgeDataModal'
 import { getCategoryEmoji } from '../utils/categoryUtils'
 import Skeleton from '../components/Skeleton'
+import DateRangeSelector from '../components/DateRangeSelector'
 
 const INR = (n) => `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 
@@ -42,7 +43,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 export default function AnalyticsPage() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [targetDate, setTargetDate] = useState('')
+  const [dateFilter, setDateFilter] = useState({ mode: 'today', start: null, end: null })
   const [chartMode, setChartMode] = useState('daily')  // 'daily' | 'monthly'
   const [showExportModal, setShowExportModal] = useState(false)
   const [showPurgeModal, setShowPurgeModal] = useState(false)
@@ -52,7 +53,9 @@ export default function AnalyticsPage() {
   const load = async () => {
     setLoading(true)
     try {
-      const r = await analyticsApi.summary(targetDate || null)
+      const sDate = dateFilter.mode === 'today' ? null : dateFilter.start || null
+      const eDate = dateFilter.mode === 'today' ? null : dateFilter.end || null
+      const r = await analyticsApi.summary(sDate, eDate)
       setData(r.data)
     } catch (e) {
       console.error(e)
@@ -61,7 +64,9 @@ export default function AnalyticsPage() {
     }
   }
 
-  useEffect(() => { load() }, [targetDate])
+  useEffect(() => {
+    load()
+  }, [dateFilter])
 
 
 
@@ -127,15 +132,10 @@ export default function AnalyticsPage() {
           <p className="text-slate-500 dark:text-white/40 text-xs mt-0.5">Revenue, Operating Expenses & True Net Profit</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30" size={14} />
-            <input
-              type="date"
-              className="input-field pl-8 text-sm py-2 w-40"
-              value={targetDate}
-              onChange={(e) => setTargetDate(e.target.value)}
-            />
-          </div>
+          <DateRangeSelector
+            loading={loading}
+            onFilterChange={(newFilter) => setDateFilter(newFilter)}
+          />
           <button onClick={load} disabled={loading} className="btn-ghost flex items-center gap-2 text-sm" title="Refresh">
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </button>
@@ -258,7 +258,9 @@ export default function AnalyticsPage() {
 
               {/* Expense Categories */}
               <div>
-                <h3 className="text-slate-900 dark:text-white font-semibold text-sm mb-3">Expense Breakdown</h3>
+                <h3 className="text-slate-900 dark:text-white font-semibold text-sm mb-3">
+                  Expense Breakdown
+                </h3>
                 {catExpenses.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-24 text-slate-400 dark:text-white/25 gap-1">
                     <Receipt size={22} className="opacity-30" />

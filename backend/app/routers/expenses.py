@@ -76,7 +76,8 @@ def create_expense(
 def list_expenses(
     tenant_id: uuid.UUID,
     category: Optional[str] = None,
-    target_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
+    start_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
+    end_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_session),
@@ -86,10 +87,16 @@ def list_expenses(
 
     if category:
         stmt = stmt.where(Expense.category == category)
-    if target_date:
+    if start_date:
         try:
-            parsed_date = datetime.strptime(target_date, "%Y-%m-%d").date()
-            stmt = stmt.where(cast(Expense.created_at, Date) == parsed_date)
+            parsed_start = datetime.strptime(start_date, "%Y-%m-%d").date()
+            stmt = stmt.where(cast(Expense.created_at, Date) >= parsed_start)
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            parsed_end = datetime.strptime(end_date, "%Y-%m-%d").date()
+            stmt = stmt.where(cast(Expense.created_at, Date) <= parsed_end)
         except ValueError:
             pass
 

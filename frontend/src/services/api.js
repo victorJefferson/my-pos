@@ -139,9 +139,9 @@ export const accountsApi = {
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
 export const analyticsApi = {
-  summary: (targetDate = null) =>
+  summary: (startDate = null, endDate = null) =>
     api.get('/analytics/summary', {
-      params: { tenant_id: getTenantId(), target_date: targetDate || undefined },
+      params: { tenant_id: getTenantId(), start_date: startDate || undefined, end_date: endDate || undefined },
     }),
 
   report: (startDate, endDate) =>

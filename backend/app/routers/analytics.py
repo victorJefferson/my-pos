@@ -63,17 +63,26 @@ def _recalculate_sales_if_needed(sales: List[Sale], db: Session):
 @router.get("/summary", response_model=AnalyticsSummaryResponse, dependencies=[Depends(get_current_user)])
 def get_summary(
     tenant_id: uuid.UUID,
-    target_date: Optional[str] = Query(None, description="YYYY-MM-DD, defaults to today"),
+    start_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
+    end_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
     db: Session = Depends(get_session),
 ):
-    """Return today's KPIs, payment breakdown, expense breakdown, and chart data for the analytics dashboard."""
-    if target_date:
-        day = datetime.strptime(target_date, "%Y-%m-%d").date()
+    """Return KPIs, payment breakdown, expense breakdown, and chart data for the analytics dashboard."""
+    if start_date:
+        s_date = datetime.strptime(start_date, "%Y-%m-%d").date()
     else:
-        day = date.today()
+        s_date = date.today()
 
-    day_start = datetime.combine(day, datetime.min.time())
-    day_end = datetime.combine(day, datetime.max.time())
+    if end_date:
+        e_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+    else:
+        e_date = s_date
+
+    day_start = datetime.combine(s_date, datetime.min.time())
+    day_end = datetime.combine(e_date, datetime.max.time())
+    
+    # Keeping 'day' variable for the charts which depend on a single reference day (usually today/end_date)
+    day = e_date
 
     # --- Today's Sales ---
     today_sales = db.exec(
@@ -108,7 +117,7 @@ def get_summary(
     card_amt = sum((s.total_amount for s in today_sales if s.payment_mode == PaymentMode.CARD), _zero())
 
     today_summary = DailySummary(
-        date=day.isoformat(),
+        date=s_date.isoformat() if s_date == e_date else f"{s_date.isoformat()} to {e_date.isoformat()}",
         gross_revenue=gross_revenue,
         total_cogs=total_cogs,
         total_expenses=total_expenses,
