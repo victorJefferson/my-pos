@@ -71,7 +71,7 @@ export default function AnalyticsPage() {
   const chartData = chartMode === 'daily' ? data?.daily_chart : data?.monthly_chart
   const dateSoldItems = data?.date_sold_items || []
 
-  const filteredSoldItems = dateSoldItems.filter(item => 
+  const filteredSoldItems = dateSoldItems.filter(item =>
     item.product_name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
@@ -258,7 +258,7 @@ export default function AnalyticsPage() {
 
               {/* Expense Categories */}
               <div>
-                <h3 className="text-slate-900 dark:text-white font-semibold text-sm mb-3">Expense Breakdown (Last 30 Days)</h3>
+                <h3 className="text-slate-900 dark:text-white font-semibold text-sm mb-3">Expense Breakdown</h3>
                 {catExpenses.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-24 text-slate-400 dark:text-white/25 gap-1">
                     <Receipt size={22} className="opacity-30" />

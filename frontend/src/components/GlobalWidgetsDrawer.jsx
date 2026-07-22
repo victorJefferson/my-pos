@@ -208,7 +208,7 @@ export default function GlobalWidgetsDrawer() {
                 </h3>
               </div>
               <div className="grid grid-cols-2 gap-3 mb-6">
-                {loading && accounts.length === 0 ? (
+                {loading ? (
                   <>
                     {[1, 2].map(i => (
                       <div key={i} className="glass-card p-3 h-24 animate-pulse flex flex-col justify-between">
@@ -261,7 +261,7 @@ export default function GlobalWidgetsDrawer() {
               </div>
             </div>
 
-            {loading && !data ? (
+            {loading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[1, 2, 3, 4].map(i => (
                   <div key={i} className="glass-card p-4 flex flex-col h-48 animate-pulse">

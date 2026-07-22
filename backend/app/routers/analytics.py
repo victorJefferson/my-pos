@@ -137,21 +137,21 @@ def get_summary(
         )
     ).all()
 
-    pb_cash = sum((s.total_amount for s in recent_sales if s.payment_mode == PaymentMode.CASH), _zero())
-    pb_upi = sum((s.total_amount for s in recent_sales if s.payment_mode == PaymentMode.UPI), _zero())
-    pb_card = sum((s.total_amount for s in recent_sales if s.payment_mode == PaymentMode.CARD), _zero())
-    pb_cash_c = sum(1 for s in recent_sales if s.payment_mode == PaymentMode.CASH)
-    pb_upi_c = sum(1 for s in recent_sales if s.payment_mode == PaymentMode.UPI)
-    pb_card_c = sum(1 for s in recent_sales if s.payment_mode == PaymentMode.CARD)
+    pb_cash = sum((s.total_amount for s in today_sales if s.payment_mode == PaymentMode.CASH), _zero())
+    pb_upi = sum((s.total_amount for s in today_sales if s.payment_mode == PaymentMode.UPI), _zero())
+    pb_card = sum((s.total_amount for s in today_sales if s.payment_mode == PaymentMode.CARD), _zero())
+    pb_cash_c = sum(1 for s in today_sales if s.payment_mode == PaymentMode.CASH)
+    pb_upi_c = sum(1 for s in today_sales if s.payment_mode == PaymentMode.UPI)
+    pb_card_c = sum(1 for s in today_sales if s.payment_mode == PaymentMode.CARD)
 
     payment_breakdown = PaymentBreakdown(
         cash=pb_cash, upi=pb_upi, card=pb_card,
         cash_count=pb_cash_c, upi_count=pb_upi_c, card_count=pb_card_c,
     )
 
-    # --- Expense Category Breakdown (last 30 days) ---
+    # --- Expense Category Breakdown (target date) ---
     cat_map = {}
-    for e in recent_expenses:
+    for e in today_expenses:
         cat_map[e.category] = cat_map.get(e.category, _zero()) + e.amount
 
     category_expenses = [
