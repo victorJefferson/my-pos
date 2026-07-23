@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { Search, X, CheckCircle, Loader2, Flame, ShoppingBag, Store } from 'lucide-react'
+import { Search, X, CheckCircle, Loader2, Flame, ShoppingBag, Store, AlertCircle } from 'lucide-react'
 import { productsApi, posApi } from '../services/api'
 import { TENANT_ID } from '../services/api'
 import { usePOSKeyboard } from '../hooks/usePOSKeyboard'
@@ -27,6 +27,7 @@ export default function POSPage() {
   const [paying, setPaying] = useState(false)
   const [priceModal, setPriceModal] = useState(null)            // {product}
   const [successMsg, setSuccessMsg] = useState(null)
+  const [errorMsg, setErrorMsg] = useState(null)
   const [showMobileCart, setShowMobileCart] = useState(false)
   const searchRef = useRef(null)
   const recentRef = useRef(null)
@@ -91,6 +92,11 @@ export default function POSPage() {
 
   const isFrequentlySoldView = activeCategory === 'All' && search.trim() === ''
 
+  const displayError = (msg) => {
+    setErrorMsg(msg)
+    setTimeout(() => setErrorMsg(null), 3000)
+  }
+
   // ── Add to Cart ────────────────────────────────────────────────────────────
   const addToCart = (product) => {
     if (product.selling_price === null || product.selling_price === undefined) {
@@ -101,9 +107,17 @@ export default function POSPage() {
     setCart((prev) => {
       const existing = prev.find((i) => i.product_id === product.id)
       if (existing) {
+        if (existing.quantity >= existing.max_stock) {
+          displayError(`Cannot add more. Only ${existing.max_stock} in stock.`)
+          return prev
+        }
         return prev.map((i) =>
           i.product_id === product.id ? { ...i, quantity: i.quantity + 1 } : i
         )
+      }
+      if (product.stock_quantity <= 0) {
+        displayError('Out of stock!')
+        return prev
       }
       return [...prev, {
         product_id: product.id,
@@ -135,7 +149,10 @@ export default function POSPage() {
   const changeQty = (productId, newQty) => {
     if (newQty <= 0) return removeFromCart(productId)
     const item = cart.find((i) => i.product_id === productId)
-    if (item && newQty > item.max_stock) return
+    if (item && newQty > item.max_stock) {
+      displayError(`Cannot add more. Only ${item.max_stock} in stock.`)
+      return
+    }
     setCart((prev) => prev.map((i) => i.product_id === productId ? { ...i, quantity: newQty } : i))
   }
 
@@ -387,12 +404,20 @@ export default function POSPage() {
         allProducts={allProducts}
       />
 
-      {/* ── Success Toast ─────────────────────────────────────────────────────── */}
+      {/* ── Toasters ──────────────────────────────────────────────────────────── */}
       {successMsg && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-scale-in">
           <div className="flex items-center gap-2 bg-emerald-600 text-white dark:bg-emerald-900/90 dark:border dark:border-emerald-500/40 dark:text-emerald-300 px-5 py-3 rounded-2xl shadow-xl text-sm font-medium">
             <CheckCircle size={16} />
             {successMsg}
+          </div>
+        </div>
+      )}
+      {errorMsg && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-scale-in">
+          <div className="flex items-center gap-2 bg-red-600 text-white dark:bg-red-900/90 dark:border dark:border-red-500/40 dark:text-red-300 px-5 py-3 rounded-2xl shadow-xl text-sm font-medium">
+            <AlertCircle size={16} />
+            {errorMsg}
           </div>
         </div>
       )}
