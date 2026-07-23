@@ -136,7 +136,7 @@ export default function POSPage() {
     if (newQty <= 0) return removeFromCart(productId)
     const item = cart.find((i) => i.product_id === productId)
     if (item && newQty > item.max_stock) return
-    setCart((prev) => prev.map((i) => i.product_id === productId ? { ...i, quantity: i.quantity + 1 } : i))
+    setCart((prev) => prev.map((i) => i.product_id === productId ? { ...i, quantity: newQty } : i))
   }
 
   const clearBill = () => setCart([])
