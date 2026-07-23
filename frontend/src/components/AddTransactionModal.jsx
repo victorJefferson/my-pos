@@ -32,6 +32,8 @@ export default function AddTransactionModal({ accounts = [], categories = [], on
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  const matchedExpenseAccount = accounts.find(a => (a.payment_modes || []).includes(paymentMode))
+
   const handleSaveExpense = async () => {
     const parsedAmount = parseFloat(expenseAmount)
     if (!expenseAmount || isNaN(parsedAmount) || parsedAmount <= 0) {
@@ -43,6 +45,11 @@ export default function AddTransactionModal({ accounts = [], categories = [], on
       return setError('Please specify an expense category')
     }
 
+    const finalAccountId = matchedExpenseAccount?.id || null
+    if (!finalAccountId) {
+      return setError(`No account found for ${paymentMode}. Please create an account that supports ${paymentMode} first.`)
+    }
+
     setSaving(true)
     try {
       await onSaveExpense({
@@ -50,7 +57,7 @@ export default function AddTransactionModal({ accounts = [], categories = [], on
         amount: parsedAmount,
         payment_mode: paymentMode,
         description: expenseDesc.trim() || null,
-        account_id: expenseAccountId || null
+        account_id: finalAccountId
       })
       onClose()
     } catch (e) {
@@ -168,19 +175,21 @@ export default function AddTransactionModal({ accounts = [], categories = [], on
                 />
               </div>
 
-              {accounts.length > 0 && (
-                <div>
-                  <label className="text-slate-600 dark:text-white/60 text-xs mb-1 block font-medium">Account (Optional)</label>
-                  <select
-                    className="input-field text-sm"
-                    value={expenseAccountId}
-                    onChange={(e) => setExpenseAccountId(e.target.value)}
-                  >
-                    <option value="">-- Do not link to account --</option>
-                    {accounts.map(a => (
-                      <option key={a.id} value={a.id}>{a.name} (₹{a.balance})</option>
-                    ))}
-                  </select>
+              {matchedExpenseAccount ? (
+                <div className="mb-2 p-2.5 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-slate-500 dark:text-white/40 block mb-0.5">Linked Account</span>
+                    <span className="text-sm font-bold text-slate-700 dark:text-white/90">{matchedExpenseAccount.name}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs text-slate-500 dark:text-white/40 block mb-0.5">Balance</span>
+                    <span className="text-sm font-bold text-slate-700 dark:text-white/90">₹{matchedExpenseAccount.balance}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-2 p-2.5 bg-red-50 dark:bg-red-500/10 rounded-xl border border-red-200 dark:border-red-500/30 text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-2">
+                  <AlertCircle size={14} />
+                  No account supports {paymentMode} payments. Please configure one.
                 </div>
               )}
 
