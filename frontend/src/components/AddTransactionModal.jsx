@@ -14,9 +14,14 @@ export default function AddTransactionModal({ accounts = [], categories = [], on
   const [category, setCategory] = useState('Misc')
   const [customCategory, setCustomCategory] = useState('')
   const [expenseAmount, setExpenseAmount] = useState('')
-  const [paymentMode, setPaymentMode] = useState('CASH')
+  const [paymentMode, setPaymentMode] = useState(() => {
+    if (initialAccountId && accounts?.length) {
+      const acc = accounts.find(a => a.id === initialAccountId)
+      if (acc && acc.payment_modes?.length > 0) return acc.payment_modes[0]
+    }
+    return 'CASH'
+  })
   const [expenseDesc, setExpenseDesc] = useState('')
-  const [expenseAccountId, setExpenseAccountId] = useState(initialAccountId || '')
 
   // Transfer Form State
   const [transferAmount, setTransferAmount] = useState('')
