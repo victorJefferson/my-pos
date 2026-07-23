@@ -28,14 +28,26 @@ const EXPENSE_COLORS = ['#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#3b82f6', '
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
+  const data = payload[0].payload;
+  
   return (
-    <div className="bg-white dark:bg-[#1a1a2e] border border-slate-200 dark:border-white/10 p-3 rounded-xl shadow-lg text-xs">
-      <p className="text-slate-500 dark:text-white/60 mb-2 font-medium">{label}</p>
-      {payload.map((p) => (
-        <p key={p.name} style={{ color: p.color }} className="font-semibold">
-          {p.name}: {INR(p.value)}
+    <div className="bg-white dark:bg-[#1a1a2e] border border-slate-200 dark:border-white/10 p-3 rounded-xl shadow-lg text-xs min-w-[140px]">
+      <p className="text-slate-500 dark:text-white/60 mb-2 font-medium border-b border-slate-100 dark:border-white/10 pb-1">{label}</p>
+      <div className="space-y-1">
+        <p className="text-[#7c3aed] font-semibold flex justify-between">
+          <span>Revenue:</span> <span>{INR(data.revenue)}</span>
         </p>
-      ))}
+        <p className="text-slate-500 dark:text-slate-400 font-semibold flex justify-between">
+          <span>COGS:</span> <span>-{INR(data.cost)}</span>
+        </p>
+        <p className="text-[#f59e0b] font-semibold flex justify-between">
+          <span>Expenses:</span> <span>-{INR(data.expenses)}</span>
+        </p>
+      </div>
+      <div className="my-2 border-t border-slate-100 dark:border-white/10" />
+      <p className="text-[#10b981] font-bold flex justify-between">
+        <span>Net Profit:</span> <span>{INR(data.profit)}</span>
+      </p>
     </div>
   )
 }
