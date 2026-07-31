@@ -1,9 +1,15 @@
 import axios from 'axios'
 import { getToken, getFreshToken } from '../tokenStore'
 
-let rawBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1').trim()
-if (rawBase.endsWith('/')) rawBase = rawBase.slice(0, -1)
-if (!rawBase.endsWith('/api/v1')) rawBase = `${rawBase}/api/v1`
+// Local default: same-origin `/api/v1` (Vite proxies to backend).
+// Production: set VITE_API_BASE_URL to the full API host.
+let rawBase = (import.meta.env.VITE_API_BASE_URL || '').trim()
+if (!rawBase) {
+  rawBase = '/api/v1'
+} else {
+  if (rawBase.endsWith('/')) rawBase = rawBase.slice(0, -1)
+  if (!rawBase.endsWith('/api/v1')) rawBase = `${rawBase}/api/v1`
+}
 const BASE_URL = rawBase
 
 export const getTenantId = () =>
@@ -152,12 +158,35 @@ export const analyticsApi = {
 
 // ── AI ────────────────────────────────────────────────────────────────────────
 export const aiApi = {
-  query: (question) =>
-    api.post('/ai/query', { question, tenant_id: getTenantId() }),
+  status: () => api.get('/ai/status'),
+
+  query: (question, threadId = null) =>
+    api.post(
+      '/ai/query',
+      { question, tenant_id: getTenantId(), thread_id: threadId || undefined },
+      { timeout: 60000 },
+    ),
+
+  listThreads: () =>
+    api.get('/ai/threads', { params: { tenant_id: getTenantId() } }),
+
+  createThread: (title = 'New chat') =>
+    api.post('/ai/threads', { tenant_id: getTenantId(), title }),
+
+  getMessages: (threadId) =>
+    api.get(`/ai/threads/${threadId}/messages`, {
+      params: { tenant_id: getTenantId() },
+    }),
+
+  deleteThread: (threadId) =>
+    api.delete(`/ai/threads/${threadId}`, {
+      params: { tenant_id: getTenantId() },
+    }),
 
   eodSummary: (targetDate = null) =>
     api.get('/ai/eod-summary', {
       params: { tenant_id: getTenantId(), target_date: targetDate || undefined },
+      timeout: 60000,
     }),
 }
 

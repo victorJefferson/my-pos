@@ -16,6 +16,7 @@ import TransactionsPage from './pages/TransactionsPage'
 
 import MobileNavbar from './components/MobileNavbar'
 import GlobalWidgetsDrawer from './components/GlobalWidgetsDrawer'
+import { AiChatProvider } from './context/AiChatContext'
 
 // ── Desktop Only Route Guard ──────────────────────────────────────────────────
 function DesktopOnlyRoute({ children }) {
@@ -81,23 +82,25 @@ function AppLayout() {
   return (
     <AuthWrapper>
       <BrowserRouter>
-        <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200 relative">
-          <div className="hidden md:flex">
-            <Sidebar />
+        <AiChatProvider>
+          <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200 relative">
+            <div className="hidden md:flex">
+              <Sidebar />
+            </div>
+            <main className="flex-1 overflow-hidden pb-[60px] md:pb-0">
+              <Routes>
+                <Route path="/" element={<POSPage />} />
+                <Route path="/inventory" element={<DesktopOnlyRoute><InventoryPage /></DesktopOnlyRoute>} />
+                <Route path="/expenses" element={<ExpensesPage />} />
+                <Route path="/analytics" element={<DesktopOnlyRoute><AnalyticsPage /></DesktopOnlyRoute>} />
+                <Route path="/ai" element={<DesktopOnlyRoute><AIPage /></DesktopOnlyRoute>} />
+                <Route path="/transactions" element={<TransactionsPage />} />
+              </Routes>
+            </main>
+            <MobileNavbar />
+            <GlobalWidgetsDrawer />
           </div>
-          <main className="flex-1 overflow-hidden pb-[60px] md:pb-0">
-            <Routes>
-              <Route path="/" element={<POSPage />} />
-              <Route path="/inventory" element={<DesktopOnlyRoute><InventoryPage /></DesktopOnlyRoute>} />
-              <Route path="/expenses" element={<ExpensesPage />} />
-              <Route path="/analytics" element={<DesktopOnlyRoute><AnalyticsPage /></DesktopOnlyRoute>} />
-              <Route path="/ai" element={<DesktopOnlyRoute><AIPage /></DesktopOnlyRoute>} />
-              <Route path="/transactions" element={<TransactionsPage />} />
-            </Routes>
-          </main>
-          <MobileNavbar />
-          <GlobalWidgetsDrawer />
-        </div>
+        </AiChatProvider>
       </BrowserRouter>
     </AuthWrapper>
   )
