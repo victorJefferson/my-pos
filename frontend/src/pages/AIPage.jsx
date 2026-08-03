@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { aiApi } from '../services/api'
 import { useAiChat } from '../context/AiChatContext'
+import { useOffline } from '../context/OfflineContext'
 
 const SUGGESTED_QUESTIONS = [
   "What was today's total revenue?",
@@ -75,6 +76,7 @@ export default function AIPage() {
   const [eod, setEod] = useState(null)
   const [eodLoading, setEodLoading] = useState(false)
   const [groqConfigured, setGroqConfigured] = useState(null)
+  const { online, enabled: offlineEnabled } = useOffline()
 
   const {
     threadId,
@@ -84,8 +86,14 @@ export default function AIPage() {
     syncThreadId,
   } = useAiChat()
 
+  const aiBlocked = offlineEnabled && !online
+
   useEffect(() => {
     let cancelled = false
+    if (aiBlocked) {
+      setGroqConfigured(false)
+      return () => { cancelled = true }
+    }
     aiApi.status()
       .then((r) => {
         if (!cancelled) setGroqConfigured(Boolean(r.data?.groq_configured))
@@ -94,9 +102,13 @@ export default function AIPage() {
         if (!cancelled) setGroqConfigured(false)
       })
     return () => { cancelled = true }
-  }, [])
+  }, [aiBlocked])
 
   const ask = async (q) => {
+    if (aiBlocked) {
+      alert('Connect to the internet to use AI Insights.')
+      return
+    }
     if (loading) return
     const text = q || question.trim()
     if (!text) return
@@ -141,6 +153,11 @@ export default function AIPage() {
   return (
     <div className="flex h-screen overflow-hidden gap-5 p-6 bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200">
       <div className="flex-1 flex flex-col glass-card overflow-hidden">
+        {aiBlocked && (
+          <div className="px-5 py-3 bg-amber-500 text-white text-sm font-medium">
+            Connect to the internet to use AI Insights. Offline mode cannot run analytics queries.
+          </div>
+        )}
         <div className="px-5 py-4 border-b border-slate-200 dark:border-white/5 flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
             <Sparkles size={16} className="text-white" />

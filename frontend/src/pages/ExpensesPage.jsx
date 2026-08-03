@@ -8,9 +8,20 @@ import Skeleton from '../components/Skeleton'
 import StatCard from '../components/StatCard'
 import AddTransactionModal from '../components/AddTransactionModal'
 import DateRangeSelector from '../components/DateRangeSelector'
+import {
+  listExpensesCached,
+  listAccountsCached,
+  offlineExpenseCreate,
+  offlineExpenseDelete,
+  offlineTransfer,
+  offlineDeposit,
+} from '../offline/mutations'
+import { useOffline } from '../context/OfflineContext'
+import { OFFLINE_MODE } from '../offline/config'
 
 
 export default function ExpensesPage() {
+  const { refresh: refreshOffline } = useOffline()
   const [expenses, setExpenses] = useState([])
   const [accounts, setAccounts] = useState([])
   const [categories, setCategories] = useState([])
@@ -24,19 +35,40 @@ export default function ExpensesPage() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [expRes, catRes, accRes] = await Promise.all([
-        expensesApi.list({
-          category: activeCategory !== 'All' ? activeCategory : undefined,
-          start_date: dateFilter.mode === 'today' ? new Date().toISOString().split('T')[0] : dateFilter.start || undefined,
-          end_date: dateFilter.mode === 'today' ? new Date().toISOString().split('T')[0] : dateFilter.end || undefined,
-          limit: 200,
-        }),
-        expensesApi.categories(),
-        accountsApi.list(),
-      ])
-      setExpenses(expRes.data)
-      setCategories(['All', ...catRes.data])
-      setAccounts(accRes.data)
+      if (OFFLINE_MODE) {
+        const [exps, accs] = await Promise.all([
+          listExpensesCached({
+            category: activeCategory !== 'All' ? activeCategory : undefined,
+            start_date: dateFilter.mode === 'today' ? new Date().toISOString().split('T')[0] : dateFilter.start || undefined,
+            end_date: dateFilter.mode === 'today' ? new Date().toISOString().split('T')[0] : dateFilter.end || undefined,
+            limit: 200,
+          }),
+          listAccountsCached(),
+        ])
+        setExpenses(exps)
+        setAccounts(accs)
+        try {
+          const catRes = await expensesApi.categories()
+          setCategories(['All', ...catRes.data])
+        } catch {
+          const cats = [...new Set(exps.map((e) => e.category).filter(Boolean))]
+          setCategories(['All', ...cats])
+        }
+      } else {
+        const [expRes, catRes, accRes] = await Promise.all([
+          expensesApi.list({
+            category: activeCategory !== 'All' ? activeCategory : undefined,
+            start_date: dateFilter.mode === 'today' ? new Date().toISOString().split('T')[0] : dateFilter.start || undefined,
+            end_date: dateFilter.mode === 'today' ? new Date().toISOString().split('T')[0] : dateFilter.end || undefined,
+            limit: 200,
+          }),
+          expensesApi.categories(),
+          accountsApi.list(),
+        ])
+        setExpenses(expRes.data)
+        setCategories(['All', ...catRes.data])
+        setAccounts(accRes.data)
+      }
     } catch (e) {
       console.error(e)
     } finally {
@@ -49,12 +81,14 @@ export default function ExpensesPage() {
   }, [loadData])
 
   const handleCreateExpense = async (payload) => {
-    await expensesApi.create(payload)
+    await offlineExpenseCreate(payload)
+    refreshOffline()
     loadData()
   }
 
   const handleCreateTransfer = async (payload) => {
-    await accountsApi.transfer(payload)
+    await offlineTransfer(payload)
+    refreshOffline()
     loadData()
   }
 
@@ -63,7 +97,8 @@ export default function ExpensesPage() {
     if (!window.confirm(`Delete expense "${exp.category} - ₹${exp.amount}"?`)) return
     setDeletingId(exp.id)
     try {
-      await expensesApi.delete(exp.id)
+      await offlineExpenseDelete(exp.id)
+      refreshOffline()
       await loadData()
     } catch (e) {
       alert('Failed to delete expense: ' + (e.response?.data?.detail || e.message))
@@ -252,7 +287,7 @@ export default function ExpensesPage() {
           categories={categories.filter(c => c !== 'All')}
           onSaveExpense={handleCreateExpense}
           onSaveTransfer={handleCreateTransfer}
-          onSaveDeposit={async (payload) => { await accountsApi.deposit(payload); loadData() }}
+          onSaveDeposit={async (payload) => { await offlineDeposit(payload); refreshOffline(); loadData() }}
           onClose={() => setShowModal(false)}
         />
       )}

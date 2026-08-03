@@ -8,6 +8,14 @@ import { productsApi } from '../services/api'
 import Skeleton from '../components/Skeleton'
 import LowStockBadge from '../components/LowStockBadge'
 import CSVImportModal from '../components/CSVImportModal'
+import {
+  listProductsCached,
+  offlineProductCreate,
+  offlineProductUpdate,
+  offlineProductDelete,
+} from '../offline/mutations'
+import { useOffline } from '../context/OfflineContext'
+import { OFFLINE_MODE } from '../offline/config'
 
 const EMPTY_FORM = {
   category: '', name: '', selling_price: '', cost_price: '', stock_quantity: 0, is_active: true,
@@ -162,6 +170,7 @@ function ProductModal({ product, categories, onSave, onClose }) {
 }
 
 export default function InventoryPage() {
+  const { hasPending, refresh: refreshOffline } = useOffline()
   const [searchParams] = useSearchParams()
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState(['All'])
@@ -198,28 +207,44 @@ export default function InventoryPage() {
       const params = { active_only: false }
       if (search) params.search = search
       if (activeCategory !== 'All') params.category = activeCategory
-      const r = await productsApi.list(params)
-      setProducts(r.data)
+      if (OFFLINE_MODE) {
+        let rows = await listProductsCached(params)
+        setProducts(rows)
+        const cats = [...new Set(rows.map((p) => p.category).filter(Boolean))]
+        setCategories(['All', ...cats.sort()])
+      } else {
+        const r = await productsApi.list(params)
+        setProducts(r.data)
+      }
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }, [search, activeCategory])
 
-  useEffect(() => { loadCategories() }, [])
+  useEffect(() => { if (!OFFLINE_MODE) loadCategories() }, [])
   useEffect(() => { loadProducts() }, [loadProducts])
 
   const handleCreate = async (payload) => {
-    await productsApi.create(payload)
+    await offlineProductCreate(payload)
+    refreshOffline()
     loadProducts()
     loadCategories()
   }
 
   const handleBulkImport = async (parsedItems) => {
+    if (hasPending) {
+      alert('Sync or discard pending offline changes before importing CSV.')
+      return
+    }
     await productsApi.importCsv(parsedItems)
     loadProducts()
     loadCategories()
   }
 
   const handleResetInventory = async () => {
+    if (hasPending) {
+      alert('Sync or discard pending offline changes before resetting inventory.')
+      return
+    }
     setResetting(true)
     try {
       await productsApi.reset()
@@ -236,7 +261,8 @@ export default function InventoryPage() {
   const [deletingId, setDeletingId] = useState(null)
 
   const handleUpdate = async (id, payload) => {
-    await productsApi.update(id, payload)
+    await offlineProductUpdate(id, payload)
+    refreshOffline()
     loadProducts()
   }
 
@@ -245,7 +271,8 @@ export default function InventoryPage() {
     if (!window.confirm(`Deactivate "${product.name}"?`)) return
     setDeletingId(product.id)
     try {
-      await productsApi.delete(product.id)
+      await offlineProductDelete(product.id)
+      refreshOffline()
       await loadProducts()
     } catch (e) {
       alert('Failed to deactivate product: ' + (e.response?.data?.detail || e.message))

@@ -12,6 +12,7 @@ from app.models.embeddings import ProductEmbedding  # noqa: F401
 from app.models.account import Account # noqa: F401
 from app.models.wallet_transaction import WalletTransaction # noqa: F401
 from app.models.ai_chat import AiThread, AiMessage  # noqa: F401
+from app.models.sync_idempotency import SyncIdempotency  # noqa: F401
 from app.database import create_db_and_tables
 from app.routers.products import router as products_router
 from app.routers.pos import router as pos_router

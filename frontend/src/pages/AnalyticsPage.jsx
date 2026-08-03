@@ -15,6 +15,7 @@ import PurgeDataModal from '../components/PurgeDataModal'
 import { getCategoryEmoji } from '../utils/categoryUtils'
 import Skeleton from '../components/Skeleton'
 import DateRangeSelector from '../components/DateRangeSelector'
+import { useOffline } from '../context/OfflineContext'
 
 const INR = (n) => `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 
@@ -53,6 +54,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 }
 
 export default function AnalyticsPage() {
+  const { hasPending, online, enabled: offlineEnabled } = useOffline()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [dateFilter, setDateFilter] = useState({ mode: 'today', start: null, end: null })
@@ -65,6 +67,10 @@ export default function AnalyticsPage() {
   const load = async () => {
     setLoading(true)
     try {
+      if (offlineEnabled && !online) {
+        setData(null)
+        return
+      }
       const sDate = dateFilter.mode === 'today' ? null : dateFilter.start || null
       const eDate = dateFilter.mode === 'today' ? null : dateFilter.end || null
       const r = await analyticsApi.summary(sDate, eDate)
@@ -141,7 +147,15 @@ export default function AnalyticsPage() {
             <BarChart3 size={20} className="text-brand-600 dark:text-brand-400" />
             Analytics & Financials
           </h1>
-          <p className="text-slate-500 dark:text-white/40 text-xs mt-0.5">Revenue, Operating Expenses & True Net Profit</p>
+          <p className="text-slate-500 dark:text-white/40 text-xs mt-0.5">
+            Revenue, Operating Expenses & True Net Profit
+            {offlineEnabled && hasPending && (
+              <span className="ml-2 text-amber-600 dark:text-amber-400">· Includes unsynced data locally until sync finishes</span>
+            )}
+            {offlineEnabled && !online && (
+              <span className="ml-2 text-amber-600 dark:text-amber-400">· Offline — reconnect for live server analytics</span>
+            )}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <DateRangeSelector

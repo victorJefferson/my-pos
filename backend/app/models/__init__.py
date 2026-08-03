@@ -4,6 +4,7 @@ from app.models.product import Product
 from app.models.sale import Sale, SaleItem, PaymentMode
 from app.models.expense import Expense
 from app.models.ai_chat import AiThread, AiMessage, AiMessageRole
+from app.models.sync_idempotency import SyncIdempotency
 
 __all__ = [
     "Tenant",
@@ -17,4 +18,5 @@ __all__ = [
     "AiThread",
     "AiMessage",
     "AiMessageRole",
+    "SyncIdempotency",
 ]

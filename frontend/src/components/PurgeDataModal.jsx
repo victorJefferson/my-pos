@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Trash2, AlertTriangle, Download, X, Check, Loader2, ShieldAlert, Database } from 'lucide-react'
 import { analyticsApi, posApi } from '../services/api'
+import { useOffline } from '../context/OfflineContext'
 
 export default function PurgeDataModal({ onClose, onPurgeSuccess }) {
+  const { hasPending } = useOffline()
   const [backedUp, setBackedUp] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [confirmText, setConfirmText] = useState('')
@@ -72,6 +74,10 @@ export default function PurgeDataModal({ onClose, onPurgeSuccess }) {
   const handlePurge = async () => {
     if (!backedUp) return
     if (confirmText.trim().toUpperCase() !== 'DELETE') return
+    if (hasPending) {
+      setError('Sync or discard pending offline changes before purging server history.')
+      return
+    }
 
     setPurging(true)
     setError('')

@@ -1,7 +1,7 @@
 import uuid
 from typing import List, Optional
-from datetime import datetime, date
-from fastapi import APIRouter, Depends, HTTPException, Query
+from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, Query, Header, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import cast, Date
 from sqlmodel import select
@@ -12,6 +12,7 @@ from app.models.expense import Expense
 from app.models.account import Account
 from app.models.wallet_transaction import WalletTransaction, TransactionType
 from app.schemas.expense import ExpenseCreate, ExpenseRead
+from app.services.idempotency import get_cached_response, store_response, raise_sync_error
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
 
@@ -35,12 +36,23 @@ def create_expense(
     payload: ExpenseCreate,
     db: Session = Depends(get_session),
     current_user: dict = Depends(get_current_user),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
 ):
-    """Record a new store operating expense (Transportation, Procurement, Utilities, etc.)."""
-    user_id = None
-    if current_user and "sub" in current_user:
-        # Optionally link user
-        pass
+    """Record a new store operating expense."""
+    cached = get_cached_response(db, tenant_id, idempotency_key)
+    if cached and cached.response_json:
+        return cached.response_json
+
+    if payload.account_id:
+        acc = db.exec(
+            select(Account)
+            .where(Account.id == payload.account_id, Account.tenant_id == tenant_id)
+            .with_for_update()
+        ).first()
+        if not acc:
+            raise_sync_error("ACCOUNT_MISSING", "Account not found", status_code=404)
+    else:
+        acc = None
 
     exp = Expense(
         tenant_id=tenant_id,
@@ -48,25 +60,26 @@ def create_expense(
         amount=payload.amount,
         payment_mode=payload.payment_mode,
         description=payload.description,
-        account_id=payload.account_id
+        account_id=payload.account_id,
     )
     db.add(exp)
     db.flush()
 
-    if payload.account_id:
-        acc = db.exec(select(Account).where(Account.id == payload.account_id)).first()
-        if acc:
-            acc.balance -= payload.amount
-            db.add(acc)
-            tx = WalletTransaction(
+    if acc:
+        acc.balance -= payload.amount
+        db.add(acc)
+        db.add(
+            WalletTransaction(
                 tenant_id=tenant_id,
                 account_id=acc.id,
                 type=TransactionType.EXPENSE,
                 amount=payload.amount,
-                reference_id=exp.id
+                reference_id=exp.id,
             )
-            db.add(tx)
+        )
 
+    result = _to_read(exp)
+    store_response(db, tenant_id, idempotency_key, "POST /expenses/", 201, result)
     db.commit()
     db.refresh(exp)
     return _to_read(exp)
@@ -115,27 +128,48 @@ def list_expense_categories(tenant_id: uuid.UUID, db: Session = Depends(get_sess
     return combined
 
 
-@router.delete("/{expense_id}", status_code=204, dependencies=[Depends(get_current_user)])
+@router.delete("/{expense_id}", dependencies=[Depends(get_current_user)])
 def delete_expense(
     expense_id: uuid.UUID,
     tenant_id: uuid.UUID,
     db: Session = Depends(get_session),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
 ):
-    exp = db.exec(select(Expense).where(Expense.id == expense_id, Expense.tenant_id == tenant_id)).first()
-    if not exp:
-        raise HTTPException(status_code=404, detail="Expense not found")
+    cached = get_cached_response(db, tenant_id, idempotency_key)
+    if cached:
+        if cached.response_json is not None:
+            return cached.response_json
+        return Response(status_code=cached.status_code or 200)
 
-    wallet_tx = db.exec(select(WalletTransaction).where(
-        WalletTransaction.reference_id == expense_id,
-        WalletTransaction.type == TransactionType.EXPENSE
-    )).first()
+    exp = db.exec(
+        select(Expense).where(Expense.id == expense_id, Expense.tenant_id == tenant_id).with_for_update()
+    ).first()
+    if not exp:
+        store_response(
+            db, tenant_id, idempotency_key,
+            f"DELETE /expenses/{expense_id}", 200, {"status": "already_deleted"},
+        )
+        db.commit()
+        return {"status": "already_deleted"}
+
+    wallet_tx = db.exec(
+        select(WalletTransaction).where(
+            WalletTransaction.reference_id == expense_id,
+            WalletTransaction.type == TransactionType.EXPENSE,
+        ).with_for_update()
+    ).first()
 
     if wallet_tx:
-        acc = db.exec(select(Account).where(Account.id == wallet_tx.account_id)).first()
+        acc = db.exec(
+            select(Account).where(Account.id == wallet_tx.account_id).with_for_update()
+        ).first()
         if acc:
             acc.balance += wallet_tx.amount
             db.add(acc)
         db.delete(wallet_tx)
 
     db.delete(exp)
+    body = {"status": "deleted"}
+    store_response(db, tenant_id, idempotency_key, f"DELETE /expenses/{expense_id}", 200, body)
     db.commit()
+    return body
