@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } fro
 import { ChevronDown, ChevronUp, Trash2, Clock, Receipt, Loader2 } from 'lucide-react'
 import { posApi } from '../services/api'
 import { computeSaleTotals, computeItemTotals } from '../utils/saleUtils'
+import { listSalesCached, offlineVoidSale, offlineUpdateItemQty } from '../offline/mutations'
+import { OFFLINE_MODE } from '../offline/config'
+import { useOffline } from '../context/OfflineContext'
+import { timeAgoApp } from '../utils/dateUtils'
 
 const PAYMENT_BADGE = {
   CASH:  { label: 'Cash', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
@@ -10,14 +14,11 @@ const PAYMENT_BADGE = {
 }
 
 function timeAgo(dateStr) {
-  const diff = Math.floor((Date.now() - new Date(dateStr + 'Z').getTime()) / 1000)
-  if (diff < 60) return `${diff}s ago`
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  return new Date(dateStr + 'Z').toLocaleDateString()
+  return timeAgoApp(dateStr) || '—'
 }
 
 const RecentTransactions = forwardRef(function RecentTransactions({ onRefresh }, ref) {
+  const { refresh: refreshOffline } = useOffline()
   const [open, setOpen] = useState(true)
   const [sales, setSales] = useState([])
   const [loading, setLoading] = useState(false)
@@ -29,8 +30,12 @@ const RecentTransactions = forwardRef(function RecentTransactions({ onRefresh },
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await posApi.recentSales(null, 20)
-      setSales(res.data)
+      if (OFFLINE_MODE) {
+        setSales(await listSalesCached(null, 20))
+      } else {
+        const res = await posApi.recentSales(null, 20)
+        setSales(res.data)
+      }
     } catch (e) {
       console.error('Failed to load recent sales', e)
     } finally {
@@ -40,15 +45,23 @@ const RecentTransactions = forwardRef(function RecentTransactions({ onRefresh },
 
   useEffect(() => { load() }, [load])
 
+  useEffect(() => {
+    const onSynced = () => { load() }
+    window.addEventListener('rc-offline-synced', onSynced)
+    return () => window.removeEventListener('rc-offline-synced', onSynced)
+  }, [load])
+
   useImperativeHandle(ref, () => ({ refresh: load }), [load])
 
   const handleDelete = async (sale) => {
-    if (!window.confirm(`Void Invoice #${sale.invoice_number}? Stock will be restored.`)) return
+    const label = sale.pending ? 'this unsynced bill' : `Invoice #${sale.invoice_number}`
+    if (!window.confirm(`Void ${label}? Stock will be restored.`)) return
     setDeleting(sale.id)
     try {
-      await posApi.deleteSale(sale.id)
+      await offlineVoidSale(sale.id)
       setSales(prev => prev.filter(s => s.id !== sale.id))
       if (expandedId === sale.id) setExpandedId(null)
+      refreshOffline()
       onRefresh?.()
     } catch (e) {
       alert('Failed to delete: ' + (e.response?.data?.detail || e.message))
@@ -69,9 +82,14 @@ const RecentTransactions = forwardRef(function RecentTransactions({ onRefresh },
     if (!newQty || newQty === item.quantity) return
     setSavingItem(item.id)
     try {
-      const res = await posApi.updateItemQty(sale.id, item.id, newQty)
-      setSales(prev => prev.map(s => s.id === sale.id ? res.data : s))
+      const result = await offlineUpdateItemQty(sale.id, item.id, newQty)
+      if (result.data) {
+        setSales(prev => prev.map(s => s.id === sale.id ? result.data : s))
+      } else {
+        await load()
+      }
       setEditQty(prev => { const n = { ...prev }; delete n[item.id]; return n })
+      refreshOffline()
       onRefresh?.()
     } catch (e) {
       alert('Failed to update quantity: ' + (e.response?.data?.detail || e.message))

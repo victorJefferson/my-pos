@@ -18,6 +18,10 @@ class SaleCreate(BaseModel):
     cashier_id: Optional[uuid.UUID] = None
     payment_mode: PaymentMode = PaymentMode.CASH
     items: List[SaleItemIn]
+    # Offline/online idempotency key — unique per tenant when provided
+    client_sale_id: Optional[uuid.UUID] = None
+    # Pin wallet account (required for deterministic offline sync)
+    account_id: Optional[uuid.UUID] = None
 
 
 class SaleItemRead(BaseModel):
@@ -48,6 +52,7 @@ class SaleRead(BaseModel):
     payment_mode: PaymentMode
     cashier_id: Optional[uuid.UUID]
     created_at: datetime
+    client_sale_id: Optional[uuid.UUID] = None
     items: List[SaleItemRead] = []
 
     class Config:

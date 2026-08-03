@@ -72,14 +72,14 @@ export const productsApi = {
   categories: () =>
     api.get('/products/categories', { params: { tenant_id: getTenantId() } }),
 
-  create: (data) =>
-    api.post('/products/', data, { params: { tenant_id: getTenantId() } }),
+  create: (data, config = {}) =>
+    api.post('/products/', data, { params: { tenant_id: getTenantId() }, ...config }),
 
-  update: (id, data) =>
-    api.patch(`/products/${id}`, data, { params: { tenant_id: getTenantId() } }),
+  update: (id, data, config = {}) =>
+    api.patch(`/products/${id}`, data, { params: { tenant_id: getTenantId() }, ...config }),
 
-  delete: (id) =>
-    api.delete(`/products/${id}`, { params: { tenant_id: getTenantId() } }),
+  delete: (id, config = {}) =>
+    api.delete(`/products/${id}`, { params: { tenant_id: getTenantId() }, ...config }),
 
   lowStock: () =>
     api.get('/products/', { params: { tenant_id: getTenantId(), low_stock: true } }),
@@ -93,20 +93,20 @@ export const productsApi = {
 
 // ── POS ───────────────────────────────────────────────────────────────────────
 export const posApi = {
-  checkout: (payload) =>
-    api.post('/pos/checkout', { tenant_id: getTenantId(), ...payload }),
+  checkout: (payload, config = {}) =>
+    api.post('/pos/checkout', { tenant_id: getTenantId(), ...payload }, config),
 
   recentSales: (targetDate = null, limit = 50) =>
     api.get('/pos/sales', { params: { tenant_id: getTenantId(), target_date: targetDate || undefined, limit: targetDate ? 1000 : limit } }),
 
-  deleteSale: (saleId) =>
-    api.delete(`/pos/sales/${saleId}`, { params: { tenant_id: getTenantId() } }),
+  deleteSale: (saleId, config = {}) =>
+    api.delete(`/pos/sales/${saleId}`, { params: { tenant_id: getTenantId() }, ...config }),
 
-  updateItemQty: (saleId, itemId, quantity) =>
-    api.patch(`/pos/sales/${saleId}/items/${itemId}`, { quantity }, { params: { tenant_id: getTenantId() } }),
+  updateItemQty: (saleId, itemId, quantity, config = {}) =>
+    api.patch(`/pos/sales/${saleId}/items/${itemId}`, { quantity }, { params: { tenant_id: getTenantId() }, ...config }),
 
-  deleteItem: (saleId, itemId) =>
-    api.delete(`/pos/sales/${saleId}/items/${itemId}`, { params: { tenant_id: getTenantId() } }),
+  deleteItem: (saleId, itemId, config = {}) =>
+    api.delete(`/pos/sales/${saleId}/items/${itemId}`, { params: { tenant_id: getTenantId() }, ...config }),
 
   purgeTransactions: (includeExpenses = true) =>
     api.delete('/pos/purge-transactions', { params: { tenant_id: getTenantId(), include_expenses: includeExpenses } }),
@@ -117,30 +117,30 @@ export const expensesApi = {
   list: (params = {}) =>
     api.get('/expenses/', { params: { tenant_id: getTenantId(), ...params } }),
 
-  create: (data) =>
-    api.post('/expenses/', data, { params: { tenant_id: getTenantId() } }),
+  create: (data, config = {}) =>
+    api.post('/expenses/', data, { params: { tenant_id: getTenantId() }, ...config }),
 
   categories: () =>
     api.get('/expenses/categories', { params: { tenant_id: getTenantId() } }),
 
-  delete: (id) =>
-    api.delete(`/expenses/${id}`, { params: { tenant_id: getTenantId() } }),
+  delete: (id, config = {}) =>
+    api.delete(`/expenses/${id}`, { params: { tenant_id: getTenantId() }, ...config }),
 }
 
 // ── Accounts ──────────────────────────────────────────────────────────────────
 export const accountsApi = {
-  list: () => 
+  list: () =>
     api.get('/accounts/', { params: { tenant_id: getTenantId() } }),
-  create: (data) =>
-    api.post('/accounts/', data, { params: { tenant_id: getTenantId() } }),
-  update: (id, data) =>
-    api.put(`/accounts/${id}`, data, { params: { tenant_id: getTenantId() } }),
-  delete: (id) =>
-    api.delete(`/accounts/${id}`, { params: { tenant_id: getTenantId() } }),
-  transfer: (data) =>
-    api.post('/accounts/transfer', data, { params: { tenant_id: getTenantId() } }),
-  deposit: (data) =>
-    api.post('/accounts/deposit', data, { params: { tenant_id: getTenantId() } }),
+  create: (data, config = {}) =>
+    api.post('/accounts/', data, { params: { tenant_id: getTenantId() }, ...config }),
+  update: (id, data, config = {}) =>
+    api.put(`/accounts/${id}`, data, { params: { tenant_id: getTenantId() }, ...config }),
+  delete: (id, config = {}) =>
+    api.delete(`/accounts/${id}`, { params: { tenant_id: getTenantId() }, ...config }),
+  transfer: (data, config = {}) =>
+    api.post('/accounts/transfer', data, { params: { tenant_id: getTenantId() }, ...config }),
+  deposit: (data, config = {}) =>
+    api.post('/accounts/deposit', data, { params: { tenant_id: getTenantId() }, ...config }),
 }
 
 // ── Analytics ─────────────────────────────────────────────────────────────────

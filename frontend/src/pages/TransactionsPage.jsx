@@ -6,6 +6,15 @@ import {
 import { posApi } from '../services/api'
 import { computeSaleTotals, computeAggregateTotals, computeItemTotals, fmtRupee } from '../utils/saleUtils'
 import Skeleton from '../components/Skeleton'
+import {
+  listSalesCached,
+  offlineVoidSale,
+  offlineUpdateItemQty,
+  offlineDeleteItem,
+} from '../offline/mutations'
+import { useOffline } from '../context/OfflineContext'
+import { OFFLINE_MODE } from '../offline/config'
+import { formatAppDate, formatAppTime, timeAgoApp } from '../utils/dateUtils'
 
 const PAYMENT_BADGE = {
   CASH: { label: 'Cash',  cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700/40' },
@@ -14,22 +23,19 @@ const PAYMENT_BADGE = {
 }
 
 function timeAgo(dateStr) {
-  const diff = Math.floor((Date.now() - new Date(dateStr + 'Z').getTime()) / 1000)
-  if (diff < 60) return `${diff}s ago`
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  return new Date(dateStr + 'Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return timeAgoApp(dateStr)
 }
 
 function formatTime(dateStr) {
-  return new Date(dateStr + 'Z').toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+  return formatAppTime(dateStr, { hour: '2-digit', minute: '2-digit', hour12: true })
 }
 
 function formatDate(dateStr) {
-  return new Date(dateStr + 'Z').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
+  return formatAppDate(dateStr, { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
 export default function TransactionsPage() {
+  const { refresh: refreshOffline } = useOffline()
   const [sales, setSales] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -47,8 +53,13 @@ export default function TransactionsPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await posApi.recentSales(targetDate || null)
-      setSales(res.data)
+      if (OFFLINE_MODE) {
+        const rows = await listSalesCached(targetDate || null)
+        setSales(rows)
+      } else {
+        const res = await posApi.recentSales(targetDate || null)
+        setSales(res.data)
+      }
     } catch (e) {
       console.error(e)
     } finally {
@@ -58,13 +69,19 @@ export default function TransactionsPage() {
 
   useEffect(() => { load() }, [load])
 
+  useEffect(() => {
+    const onSynced = () => { load() }
+    window.addEventListener('rc-offline-synced', onSynced)
+    return () => window.removeEventListener('rc-offline-synced', onSynced)
+  }, [load])
+
   /* ─── Derived lists ──────────────────────────────────────────────────────── */
   const filtered = sales.filter(s => {
     if (filterMode !== 'ALL' && s.payment_mode !== filterMode) return false
     if (search.trim()) {
       const q = search.toLowerCase()
-      const matchesInvoice = String(s.invoice_number).includes(q)
-      const matchesItem = s.items.some(i => (i.product_name || '').toLowerCase().includes(q))
+      const matchesInvoice = String(s.invoice_number ?? 'pending').includes(q)
+      const matchesItem = (s.items || []).some(i => (i.product_name || '').toLowerCase().includes(q))
       if (!matchesInvoice && !matchesItem) return false
     }
     return true
@@ -76,22 +93,16 @@ export default function TransactionsPage() {
   /* ─── Delete single item ───────────────────────────────────────── */
   const handleDeleteItem = async (sale, item) => {
     const isLast = sale.items.length === 1
+    const label = sale.pending ? 'pending bill' : `Invoice #${sale.invoice_number}`
     const msg = isLast
       ? `Remove "${item.product_name || 'this item'}"? It's the only item — the whole transaction will be voided and stock restored.`
-      : `Remove "${item.product_name || 'this item'}" (×${item.quantity}) from Invoice #${sale.invoice_number}? Stock will be restored.`
+      : `Remove "${item.product_name || 'this item'}" (×${item.quantity}) from ${label}? Stock will be restored.`
     if (!window.confirm(msg)) return
     setDeletingItem(item.id)
     try {
-      await posApi.deleteItem(sale.id, item.id)
-      if (isLast) {
-        // Whole sale gone — remove from list
-        setSales(prev => prev.filter(s => s.id !== sale.id))
-        setExpandedId(null)
-      } else {
-        // Refresh the sale in the list
-        const res = await posApi.recentSales(targetDate || null)
-        setSales(res.data)
-      }
+      await offlineDeleteItem(sale.id, item.id)
+      await load()
+      refreshOffline()
     } catch (e) {
       alert('Failed to remove item: ' + (e.response?.data?.detail || e.message))
     } finally {
@@ -101,12 +112,16 @@ export default function TransactionsPage() {
 
   /* ─── Delete ─────────────────────────────────────────────────────────────── */
   const handleDelete = async (sale) => {
-    if (!window.confirm(`Void Invoice #${sale.invoice_number}?\nThis will restore stock for all ${sale.items.length} item(s).`)) return
+    const label = sale.pending
+      ? 'this unsynced bill (never uploaded)?'
+      : `Invoice #${sale.invoice_number}?\nThis will restore stock for all ${sale.items.length} item(s).`
+    if (!window.confirm(`Void ${label}`)) return
     setDeleting(sale.id)
     try {
-      await posApi.deleteSale(sale.id)
+      await offlineVoidSale(sale.id)
       setSales(prev => prev.filter(s => s.id !== sale.id))
       if (expandedId === sale.id) setExpandedId(null)
+      refreshOffline()
     } catch (e) {
       alert('Failed to void: ' + (e.response?.data?.detail || e.message))
     } finally {
@@ -132,9 +147,14 @@ export default function TransactionsPage() {
 
     setEditState(prev => ({ ...prev, [item.id]: { ...prev[item.id], saving: true } }))
     try {
-      const res = await posApi.updateItemQty(sale.id, item.id, newQty)
-      setSales(prev => prev.map(s => s.id === sale.id ? res.data : s))
+      const result = await offlineUpdateItemQty(sale.id, item.id, newQty)
+      if (result.data) {
+        setSales(prev => prev.map(s => s.id === sale.id ? result.data : s))
+      } else {
+        await load()
+      }
       cancelEdit(item.id)
+      refreshOffline()
     } catch (e) {
       alert('Failed to update: ' + (e.response?.data?.detail || e.message))
       setEditState(prev => ({ ...prev, [item.id]: { ...prev[item.id], saving: false } }))
@@ -300,7 +320,14 @@ export default function TransactionsPage() {
                   {/* Invoice badge */}
                   <div className="w-12 h-12 rounded-xl bg-brand-50 dark:bg-brand-600/10 flex flex-col items-center justify-center shrink-0">
                     <span className="text-[9px] font-bold text-brand-500 dark:text-brand-400 uppercase tracking-wider">INV</span>
-                    <span className="text-base font-black text-brand-700 dark:text-brand-300 leading-none">#{sale.invoice_number}</span>
+                    <span className="text-base font-black text-brand-700 dark:text-brand-300 leading-none">
+                      {sale.pending ? 'Pending' : `#${sale.invoice_number}`}
+                    </span>
+                    {sale.pending && (
+                      <span className="ml-2 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">
+                        Unsynced
+                      </span>
+                    )}
                   </div>
 
                   {/* Date + time */}

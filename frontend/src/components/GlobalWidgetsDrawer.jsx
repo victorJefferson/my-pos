@@ -5,9 +5,21 @@ import { analyticsApi, accountsApi, expensesApi } from '../services/api'
 import { getCategoryEmoji } from '../utils/categoryUtils'
 import CreateAccountModal from './CreateAccountModal'
 import AddTransactionModal from './AddTransactionModal'
+import {
+  listAccountsCached,
+  offlineAccountCreate,
+  offlineAccountUpdate,
+  offlineAccountDelete,
+  offlineExpenseCreate,
+  offlineTransfer,
+  offlineDeposit,
+} from '../offline/mutations'
+import { useOffline } from '../context/OfflineContext'
+import { OFFLINE_MODE } from '../offline/config'
 
 export default function GlobalWidgetsDrawer() {
   const navigate = useNavigate()
+  const { refresh: refreshOffline } = useOffline()
   const [open, setOpen] = useState(false)
   const [data, setData] = useState(null)
   const [accounts, setAccounts] = useState([])
@@ -22,7 +34,8 @@ export default function GlobalWidgetsDrawer() {
     if (acc.balance !== 0) return alert('Cannot delete account with non-zero balance.')
     if (!window.confirm(`Are you sure you want to delete the account "${acc.name}"?`)) return
     try {
-      await accountsApi.delete(acc.id)
+      await offlineAccountDelete(acc.id)
+      refreshOffline()
       loadData()
     } catch (e) {
       alert(e.response?.data?.detail || 'Failed to delete account')
@@ -41,12 +54,23 @@ export default function GlobalWidgetsDrawer() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [res, accRes] = await Promise.all([
-        analyticsApi.summary(),
-        accountsApi.list()
-      ])
-      setData(res.data)
-      setAccounts(accRes.data)
+      if (OFFLINE_MODE) {
+        const accs = await listAccountsCached()
+        setAccounts(accs)
+        try {
+          const res = await analyticsApi.summary()
+          setData(res.data)
+        } catch {
+          /* analytics online-only when offline */
+        }
+      } else {
+        const [res, accRes] = await Promise.all([
+          analyticsApi.summary(),
+          accountsApi.list()
+        ])
+        setData(res.data)
+        setAccounts(accRes.data)
+      }
     } catch (e) {
       console.error('Failed to fetch widget data:', e)
     } finally {
@@ -469,10 +493,11 @@ export default function GlobalWidgetsDrawer() {
           initialData={editingAccount}
           onSave={async (payload) => {
             if (editingAccount) {
-              await accountsApi.update(editingAccount.id, payload)
+              await offlineAccountUpdate(editingAccount.id, payload)
             } else {
-              await accountsApi.create(payload)
+              await offlineAccountCreate(payload)
             }
+            refreshOffline()
             loadData()
           }}
           onClose={() => { setShowCreateAccount(false); setEditingAccount(null); }}
@@ -483,9 +508,9 @@ export default function GlobalWidgetsDrawer() {
           initialAccountId={selectedAccountId}
           accounts={accounts}
           categories={[]}
-          onSaveExpense={async (payload) => { await expensesApi.create(payload); loadData() }}
-          onSaveTransfer={async (payload) => { await accountsApi.transfer(payload); loadData() }}
-          onSaveDeposit={async (payload) => { await accountsApi.deposit(payload); loadData() }}
+          onSaveExpense={async (payload) => { await offlineExpenseCreate(payload); refreshOffline(); loadData() }}
+          onSaveTransfer={async (payload) => { await offlineTransfer(payload); refreshOffline(); loadData() }}
+          onSaveDeposit={async (payload) => { await offlineDeposit(payload); refreshOffline(); loadData() }}
           onClose={() => { setShowAddTransaction(false); setSelectedAccountId(null) }}
         />
       )}

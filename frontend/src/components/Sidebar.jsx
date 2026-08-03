@@ -24,6 +24,7 @@ import { UserButton, useUser } from '@clerk/clerk-react'
 import { useTheme } from '../context/ThemeContext'
 import { useAiChat } from '../context/AiChatContext'
 import { authApi } from '../services/api'
+import { useOffline } from '../context/OfflineContext'
 
 const navItems = [
   { to: '/', icon: ShoppingCart, label: 'POS Billing', exact: true },
@@ -96,6 +97,7 @@ function CreateStoreModal({ onSave, onClose }) {
 export default function Sidebar() {
   const { user } = useUser()
   const { theme, toggleTheme } = useTheme()
+  const { hasPending } = useOffline()
   const location = useLocation()
   const navigate = useNavigate()
   const [stores, setStores] = useState([])
@@ -131,6 +133,10 @@ export default function Sidebar() {
   }, [])
 
   const handleSwitchStore = (st) => {
+    if (hasPending) {
+      alert('Sync or discard pending offline changes before switching stores.')
+      return
+    }
     localStorage.setItem('rc_tenant_id', st.tenant_id)
     localStorage.setItem('rc_store_name', st.store_name)
     setDropdownOpen(false)
@@ -138,6 +144,10 @@ export default function Sidebar() {
   }
 
   const handleCreateStore = async (newStoreName) => {
+    if (hasPending) {
+      alert('Sync or discard pending offline changes before creating a store.')
+      return
+    }
     const { data } = await authApi.createStore({ store_name: newStoreName })
     localStorage.setItem('rc_tenant_id', data.tenant_id)
     localStorage.setItem('rc_store_name', data.store_name)

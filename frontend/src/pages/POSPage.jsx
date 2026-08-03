@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Search, X, CheckCircle, Loader2, Flame, ShoppingBag, Store, AlertCircle } from 'lucide-react'
-import { productsApi, posApi } from '../services/api'
+import { productsApi, posApi, getTenantId } from '../services/api'
 import { TENANT_ID } from '../services/api'
 import { usePOSKeyboard } from '../hooks/usePOSKeyboard'
 import ProductCard from '../components/ProductCard'
@@ -10,10 +10,14 @@ import PriceModal from '../components/PriceModal'
 import PaymentModal from '../components/PaymentModal'
 import RecentTransactions from '../components/RecentTransactions'
 import ScannerOverlay from '../components/ScannerOverlay'
+import { offlineCheckout, listProductsCached, offlineProductUpdate, patchProductsStock } from '../offline/mutations'
+import { OFFLINE_MODE } from '../offline/config'
+import { useOffline } from '../context/OfflineContext'
 
 import { getCategoryEmoji } from '../utils/categoryUtils'
 
 export default function POSPage() {
+  const { refresh: refreshOffline } = useOffline()
   // ── States ─────────────────────────────────────────────────────────────────
   const [allProducts, setAllProducts] = useState([])            // In-memory catalog cache
   const [frequentlySold, setFrequentlySold] = useState([])      // Top sold items
@@ -29,6 +33,8 @@ export default function POSPage() {
   const [successMsg, setSuccessMsg] = useState(null)
   const [errorMsg, setErrorMsg] = useState(null)
   const [showMobileCart, setShowMobileCart] = useState(false)
+  const [stockUpdatingIds, setStockUpdatingIds] = useState(() => new Set())
+  const [stockReconciling, setStockReconciling] = useState(false)
   const searchRef = useRef(null)
   const recentRef = useRef(null)
 
@@ -36,16 +42,35 @@ export default function POSPage() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [catRes, prodRes, freqRes] = await Promise.all([
-        productsApi.categories(),
-        productsApi.list({ limit: 1000 }),                      // Fast single batch fetch
-        productsApi.frequentlySold(20).catch(() => ({ data: [] })),
-      ])
-      setCategories(['All', ...catRes.data])
-      setAllProducts(prodRes.data)
-      setFrequentlySold(freqRes.data)
+      if (OFFLINE_MODE) {
+        const products = await listProductsCached()
+        setAllProducts(products)
+        const cats = [...new Set(products.map((p) => p.category).filter(Boolean))]
+        setCategories(['All', ...cats.sort()])
+        try {
+          const freqRes = await productsApi.frequentlySold(20)
+          setFrequentlySold(freqRes.data)
+        } catch {
+          setFrequentlySold(products.slice(0, 20))
+        }
+      } else {
+        const [catRes, prodRes, freqRes] = await Promise.all([
+          productsApi.categories(),
+          productsApi.list({ limit: 1000 }),
+          productsApi.frequentlySold(20).catch(() => ({ data: [] })),
+        ])
+        setCategories(['All', ...catRes.data])
+        setAllProducts(prodRes.data)
+        setFrequentlySold(freqRes.data)
+      }
     } catch (e) {
       console.error('Failed to load POS data:', e)
+      if (OFFLINE_MODE) {
+        try {
+          const products = await listProductsCached()
+          setAllProducts(products)
+        } catch (_) { /* ignore */ }
+      }
     } finally {
       setLoading(false)
     }
@@ -58,14 +83,50 @@ export default function POSPage() {
   // ── Background Refresh Frequently Sold (e.g. after checkout) ───────────────
   const refreshFrequentlySold = async () => {
     try {
-      const freqRes = await productsApi.frequentlySold(20)
+      if (OFFLINE_MODE) {
+        const products = await listProductsCached()
+        setAllProducts(products)
+        const byId = new Map(products.map((p) => [p.id, p]))
+        try {
+          const freqRes = await productsApi.frequentlySold(20)
+          // Keep server ranking, but prefer local stock (includes queued bill deductions)
+          setFrequentlySold(
+            (freqRes.data || []).map((p) => {
+              const local = byId.get(p.id)
+              return local ? { ...p, stock_quantity: local.stock_quantity } : p
+            }),
+          )
+        } catch {
+          setFrequentlySold((prev) =>
+            prev.map((p) => {
+              const local = byId.get(p.id)
+              return local ? { ...p, stock_quantity: local.stock_quantity } : p
+            }),
+          )
+        }
+        return
+      }
+      const [freqRes, prodRes] = await Promise.all([
+        productsApi.frequentlySold(20),
+        productsApi.list({ limit: 1000 }),
+      ])
       setFrequentlySold(freqRes.data)
-      const prodRes = await productsApi.list({ limit: 1000 })
       setAllProducts(prodRes.data)
     } catch (e) {
       console.error(e)
     }
   }
+
+  const liveStockFor = useCallback(
+    (productId) => {
+      const fromAll = allProducts.find((p) => p.id === productId)
+      if (fromAll) return Number(fromAll.stock_quantity || 0)
+      const fromFreq = frequentlySold.find((p) => p.id === productId)
+      if (fromFreq) return Number(fromFreq.stock_quantity || 0)
+      return null
+    },
+    [allProducts, frequentlySold],
+  )
 
   // ── High-Speed Instant In-Memory Filter ────────────────────────────────────
   const displayedProducts = useMemo(() => {
@@ -104,18 +165,23 @@ export default function POSPage() {
       return
     }
 
+    const liveStock = liveStockFor(product.id)
+    const available = liveStock != null ? liveStock : Number(product.stock_quantity || 0)
+
     setCart((prev) => {
       const existing = prev.find((i) => i.product_id === product.id)
       if (existing) {
-        if (existing.quantity >= existing.max_stock) {
-          displayError(`Cannot add more. Only ${existing.max_stock} in stock.`)
+        if (existing.quantity >= available) {
+          displayError(`Cannot add more. Only ${available} in stock.`)
           return prev
         }
         return prev.map((i) =>
-          i.product_id === product.id ? { ...i, quantity: i.quantity + 1 } : i
+          i.product_id === product.id
+            ? { ...i, quantity: i.quantity + 1, max_stock: available }
+            : i,
         )
       }
-      if (product.stock_quantity <= 0) {
+      if (available <= 0) {
         displayError('Out of stock!')
         return prev
       }
@@ -125,7 +191,7 @@ export default function POSPage() {
         unit_selling_price: parseFloat(product.selling_price),
         unit_cost_price: parseFloat(product.cost_price || 0),
         quantity: 1,
-        max_stock: product.stock_quantity,
+        max_stock: available,
       }]
     })
   }
@@ -134,7 +200,8 @@ export default function POSPage() {
     const { product } = priceModal
     if (save_to_db) {
       try {
-        await productsApi.update(product.id, { selling_price, cost_price })
+        await offlineProductUpdate(product.id, { selling_price, cost_price })
+        refreshOffline()
         loadData()
       } catch (e) { console.error(e) }
     }
@@ -149,11 +216,19 @@ export default function POSPage() {
   const changeQty = (productId, newQty) => {
     if (newQty <= 0) return removeFromCart(productId)
     const item = cart.find((i) => i.product_id === productId)
-    if (item && newQty > item.max_stock) {
-      displayError(`Cannot add more. Only ${item.max_stock} in stock.`)
+    const live = liveStockFor(productId)
+    const maxStock = live != null ? live : item?.max_stock
+    if (item && maxStock != null && newQty > maxStock) {
+      displayError(`Cannot add more. Only ${maxStock} in stock.`)
       return
     }
-    setCart((prev) => prev.map((i) => i.product_id === productId ? { ...i, quantity: newQty } : i))
+    setCart((prev) =>
+      prev.map((i) =>
+        i.product_id === productId
+          ? { ...i, quantity: newQty, max_stock: maxStock ?? i.max_stock }
+          : i,
+      ),
+    )
   }
 
   const clearBill = () => setCart([])
@@ -161,30 +236,57 @@ export default function POSPage() {
   // ── Checkout ───────────────────────────────────────────────────────────────
   const handlePay = async (paymentMode) => {
     if (paying) return
-    if (!TENANT_ID) {
-      alert('⚠️ VITE_TENANT_ID is not set in your .env file.')
+    const tenantId = getTenantId() || TENANT_ID
+    if (!tenantId) {
+      alert('⚠️ Store is not selected. Sign in and pick a store first.')
       return
     }
+    const soldItems = cart.map((i) => ({
+      product_id: i.product_id,
+      quantity: i.quantity,
+      unit_selling_price: i.unit_selling_price,
+      unit_cost_price: i.unit_cost_price,
+    }))
+    const soldIds = new Set(soldItems.map((i) => i.product_id))
+
     setPaying(true)
     try {
-      await posApi.checkout({
-        tenant_id: TENANT_ID,
+      const result = await offlineCheckout({
+        tenant_id: tenantId,
         payment_mode: paymentMode,
-        items: cart.map((i) => ({
-          product_id: i.product_id,
-          quantity: i.quantity,
-          unit_selling_price: i.unit_selling_price,
-          unit_cost_price: i.unit_cost_price,
-        })),
+        items: soldItems,
       })
+
+      // Instant stock feedback — don't wait on network / cache refresh
+      setAllProducts((prev) => patchProductsStock(prev, soldItems, -1))
+      setFrequentlySold((prev) => patchProductsStock(prev, soldItems, -1))
+      setStockUpdatingIds(soldIds)
+      setStockReconciling(true)
+
       setShowPayment(false)
       setCart([])
-      setSuccessMsg(`✅ Payment via ${paymentMode} recorded!`)
+      setSuccessMsg(
+        result.offline
+          ? `✅ Saved offline via ${paymentMode} — will sync when online`
+          : `✅ Payment via ${paymentMode} recorded!`,
+      )
       setTimeout(() => setSuccessMsg(null), 3000)
-      refreshFrequentlySold()
       recentRef.current?.refresh()
+      if (OFFLINE_MODE) refreshOffline()
+
+      try {
+        await refreshFrequentlySold()
+      } finally {
+        setStockUpdatingIds(new Set())
+        setStockReconciling(false)
+      }
     } catch (e) {
-      alert('Checkout failed: ' + (e.response?.data?.detail || e.message))
+      const detail = e.response?.data?.detail
+      const msg =
+        typeof detail === 'object' && detail?.message
+          ? detail.message
+          : detail || e.message
+      alert('Checkout failed: ' + msg)
     } finally {
       setPaying(false)
     }
@@ -276,8 +378,21 @@ export default function POSPage() {
             )}
           </div>
           {isFrequentlySoldView && frequentlySold.length > 0 && (
-            <span className="text-[11px] text-slate-400 dark:text-white/30">
-              Top items by checkout volume
+            <span className="text-[11px] text-slate-400 dark:text-white/30 inline-flex items-center gap-1.5">
+              {stockReconciling ? (
+                <>
+                  <Loader2 size={11} className="animate-spin text-brand-500" />
+                  Updating stock…
+                </>
+              ) : (
+                'Top items by checkout volume'
+              )}
+            </span>
+          )}
+          {!isFrequentlySoldView && stockReconciling && (
+            <span className="text-[11px] text-brand-600 dark:text-brand-400 inline-flex items-center gap-1.5">
+              <Loader2 size={11} className="animate-spin" />
+              Updating stock…
             </span>
           )}
         </div>
@@ -309,7 +424,12 @@ export default function POSPage() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-2.5">
               {displayedProducts.map((product) => (
-                <ProductCard key={product.id} product={product} onAdd={addToCart} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onAdd={addToCart}
+                  updating={stockUpdatingIds.has(product.id)}
+                />
               ))}
             </div>
           )}

@@ -66,7 +66,14 @@ export default function AddTransactionModal({ accounts = [], categories = [], on
       })
       onClose()
     } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to record expense')
+      const detail = e.response?.data?.detail
+      const msg =
+        typeof detail === 'object' && detail?.message
+          ? detail.message
+          : typeof detail === 'string'
+            ? detail
+            : e.message || 'Failed to record expense'
+      setError(msg)
     } finally {
       setSaving(false)
     }

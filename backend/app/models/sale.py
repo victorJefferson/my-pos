@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional
 from decimal import Decimal
 from enum import Enum
+from sqlalchemy import UniqueConstraint
 from sqlmodel import SQLModel, Field
 
 
@@ -14,10 +15,16 @@ class PaymentMode(str, Enum):
 
 class Sale(SQLModel, table=True):
     __tablename__ = "sales"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "invoice_number", name="uq_sales_tenant_invoice"),
+    )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     tenant_id: uuid.UUID = Field(foreign_key="tenants.id", index=True)
     invoice_number: int = Field(default=None)  # auto-assigned in router
+    # Client-generated idempotency key for offline/online checkout retries
+    # Partial unique index (WHERE NOT NULL) applied in migrate.py
+    client_sale_id: Optional[uuid.UUID] = Field(default=None, index=True)
     total_amount: Decimal = Field(default=Decimal("0"), decimal_places=2, max_digits=12)
     total_cost: Decimal = Field(default=Decimal("0"), decimal_places=2, max_digits=12)
     total_profit: Decimal = Field(default=Decimal("0"), decimal_places=2, max_digits=12)

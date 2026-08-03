@@ -1,6 +1,6 @@
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
 from sqlmodel import select
 
@@ -10,6 +10,7 @@ from app.models.product import Product
 from app.models.sale import Sale, SaleItem
 from app.models.tenant import Tenant
 from app.schemas.product import ProductCreate, ProductUpdate, ProductRead
+from app.services.idempotency import get_cached_response, store_response
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -166,13 +167,25 @@ def get_product(product_id: uuid.UUID, tenant_id: uuid.UUID, db: Session = Depen
 
 
 @router.post("/", response_model=ProductRead, status_code=201, dependencies=[Depends(get_current_user)])
-def create_product(tenant_id: uuid.UUID, payload: ProductCreate, db: Session = Depends(get_session)):
+def create_product(
+    tenant_id: uuid.UUID,
+    payload: ProductCreate,
+    db: Session = Depends(get_session),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+):
+    cached = get_cached_response(db, tenant_id, idempotency_key)
+    if cached and cached.response_json:
+        return cached.response_json
+
     tenant = db.get(Tenant, tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail=f"Tenant '{tenant_id}' does not exist")
 
     p = Product(tenant_id=tenant_id, **payload.model_dump())
     db.add(p)
+    db.flush()
+    result = _to_read(p)
+    store_response(db, tenant_id, idempotency_key, "POST /products/", 201, result)
     db.commit()
     db.refresh(p)
     return _to_read(p)
@@ -184,8 +197,15 @@ def update_product(
     tenant_id: uuid.UUID,
     payload: ProductUpdate,
     db: Session = Depends(get_session),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
 ):
-    p = db.exec(select(Product).where(Product.id == product_id, Product.tenant_id == tenant_id)).first()
+    cached = get_cached_response(db, tenant_id, idempotency_key)
+    if cached and cached.response_json:
+        return cached.response_json
+
+    p = db.exec(
+        select(Product).where(Product.id == product_id, Product.tenant_id == tenant_id).with_for_update()
+    ).first()
     if not p:
         raise HTTPException(status_code=404, detail="Product not found")
 
@@ -194,18 +214,36 @@ def update_product(
         setattr(p, k, v)
 
     db.add(p)
+    result = _to_read(p)
+    store_response(db, tenant_id, idempotency_key, f"PATCH /products/{product_id}", 200, result)
     db.commit()
     db.refresh(p)
     return _to_read(p)
 
 
 @router.delete("/{product_id}", dependencies=[Depends(get_current_user)])
-def delete_product(product_id: uuid.UUID, tenant_id: uuid.UUID, db: Session = Depends(get_session)):
-    p = db.exec(select(Product).where(Product.id == product_id, Product.tenant_id == tenant_id)).first()
+def delete_product(
+    product_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    db: Session = Depends(get_session),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+):
+    cached = get_cached_response(db, tenant_id, idempotency_key)
+    if cached and cached.response_json:
+        return cached.response_json
+
+    p = db.exec(
+        select(Product).where(Product.id == product_id, Product.tenant_id == tenant_id).with_for_update()
+    ).first()
     if not p:
-        raise HTTPException(status_code=404, detail="Product not found")
+        body = {"detail": "Product already deactivated", "status": "already_deleted"}
+        store_response(db, tenant_id, idempotency_key, f"DELETE /products/{product_id}", 200, body)
+        db.commit()
+        return body
 
     p.is_active = False
     db.add(p)
+    body = {"detail": "Product deactivated successfully", "status": "deleted"}
+    store_response(db, tenant_id, idempotency_key, f"DELETE /products/{product_id}", 200, body)
     db.commit()
-    return {"detail": "Product deactivated successfully"}
+    return body
