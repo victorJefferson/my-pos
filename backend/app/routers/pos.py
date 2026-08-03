@@ -20,6 +20,7 @@ from app.services.idempotency import (
     store_response,
     raise_sync_error,
 )
+from app.timeutil import parse_ymd, local_day_utc_bounds
 
 router = APIRouter(prefix="/pos", tags=["pos"])
 
@@ -294,9 +295,7 @@ def list_sales(
     query = select(Sale).where(Sale.tenant_id == tenant_id)
 
     if target_date:
-        day = datetime.strptime(target_date, "%Y-%m-%d").date()
-        day_start = datetime.combine(day, datetime.min.time())
-        day_end = datetime.combine(day, datetime.max.time())
+        day_start, day_end = local_day_utc_bounds(parse_ymd(target_date))
         query = query.where(Sale.created_at >= day_start, Sale.created_at <= day_end)
         query = query.order_by(Sale.created_at.desc())
     else:

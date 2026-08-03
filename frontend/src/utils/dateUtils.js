@@ -11,6 +11,17 @@ export function parseAppDate(dateStr) {
   return Number.isNaN(d.getTime()) ? null : d
 }
 
+/** Local calendar day YYYY-MM-DD (cashier timezone). */
+export function localDateKey(dateStrOrDate = new Date()) {
+  if (dateStrOrDate instanceof Date) {
+    if (Number.isNaN(dateStrOrDate.getTime())) return ''
+    return dateStrOrDate.toLocaleDateString('en-CA')
+  }
+  const d = parseAppDate(dateStrOrDate)
+  if (!d) return ''
+  return d.toLocaleDateString('en-CA')
+}
+
 export function formatAppDate(dateStr, opts) {
   const d = parseAppDate(dateStr)
   if (!d) return '—'

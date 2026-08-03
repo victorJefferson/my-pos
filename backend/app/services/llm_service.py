@@ -45,16 +45,15 @@ def _parse_tenant_id(tenant_id: str) -> uuid.UUID:
 
 
 def _day_bounds(day: date) -> tuple[datetime, datetime]:
-    return (
-        datetime.combine(day, datetime.min.time()),
-        datetime.combine(day, datetime.max.time()),
-    )
+    from app.timeutil import local_day_utc_bounds
+    return local_day_utc_bounds(day)
 
 
 def _build_store_context(db: Session, tenant_id: str, target_day: Optional[date] = None) -> dict[str, Any]:
     """Pull real tenant metrics so the model answers from data, not guesses."""
+    from app.timeutil import local_today
     tid = _parse_tenant_id(tenant_id)
-    day = target_day or date.today()
+    day = target_day or local_today()
     day_start, day_end = _day_bounds(day)
     week_start, _ = _day_bounds(day - timedelta(days=6))
     month_start, _ = _day_bounds(day.replace(day=1))

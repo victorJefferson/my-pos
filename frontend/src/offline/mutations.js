@@ -15,6 +15,7 @@ import {
   updatePendingOp,
   findCheckoutOpForSale,
 } from './outbox'
+import { localDateKey } from '../utils/dateUtils'
 
 function withIdempotency(extra = {}) {
   const id = extra.idempotencyKey || newClientOpId()
@@ -778,6 +779,12 @@ async function enrichSalesWithProductNames(tenantId, sales) {
 export async function listSalesCached(targetDate = null, limit = 50) {
   const tenantId = getTenantId()
   const { online } = getConnectivity()
+
+  const filterByLocalDay = (rows) => {
+    if (!targetDate) return rows
+    return (rows || []).filter((s) => localDateKey(s.created_at) === targetDate)
+  }
+
   if (!OFFLINE_MODE || online) {
     try {
       const res = await rawPos.recentSales(targetDate, limit)
@@ -787,22 +794,22 @@ export async function listSalesCached(targetDate = null, limit = 50) {
           const existing = await db.cache_sales.get(s.id)
           if (!existing?.pending) await db.cache_sales.put({ ...s, pending: false })
         }
-      }
-      // Merge pending
-      if (OFFLINE_MODE) {
-        const pending = await getOfflineDb(tenantId).cache_sales.filter((s) => s.pending).toArray()
+        const pending = await db.cache_sales.filter((s) => s.pending).toArray()
         const serverIds = new Set((res.data || []).map((s) => s.id))
-        const merged = [...pending.filter((p) => !serverIds.has(p.id)), ...(res.data || [])]
-        return enrichSalesWithProductNames(tenantId, merged)
+        const merged = [
+          ...pending.filter((p) => !serverIds.has(p.id)),
+          ...(res.data || []),
+        ]
+        return enrichSalesWithProductNames(tenantId, filterByLocalDay(merged))
       }
-      return res.data
+      return filterByLocalDay(res.data)
     } catch (err) {
       if (!OFFLINE_MODE) throw err
     }
   }
   let rows = await getOfflineDb(tenantId).cache_sales.orderBy('created_at').reverse().toArray()
   if (targetDate) {
-    rows = rows.filter((s) => String(s.created_at || '').startsWith(targetDate))
+    rows = filterByLocalDay(rows)
   } else {
     rows = rows.slice(0, limit)
   }
@@ -819,10 +826,10 @@ export async function listExpensesCached(params = {}) {
       out = out.filter((e) => e.category === params.category)
     }
     if (params.start_date) {
-      out = out.filter((e) => String(e.created_at || '').slice(0, 10) >= params.start_date)
+      out = out.filter((e) => localDateKey(e.created_at) >= params.start_date)
     }
     if (params.end_date) {
-      out = out.filter((e) => String(e.created_at || '').slice(0, 10) <= params.end_date)
+      out = out.filter((e) => localDateKey(e.created_at) <= params.end_date)
     }
     // Never mix in sales/deposits — expenses cache only; drop malformed rows
     out = out.filter((e) => e && e.category != null && e.amount != null && !e.invoice_number)

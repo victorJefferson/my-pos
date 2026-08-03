@@ -1,9 +1,7 @@
 import uuid
 from typing import List, Optional
-from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Header, Response
 from sqlalchemy.orm import Session
-from sqlalchemy import cast, Date
 from sqlmodel import select
 
 from app.database import get_session
@@ -13,6 +11,7 @@ from app.models.account import Account
 from app.models.wallet_transaction import WalletTransaction, TransactionType
 from app.schemas.expense import ExpenseCreate, ExpenseRead
 from app.services.idempotency import get_cached_response, store_response, raise_sync_error
+from app.timeutil import parse_ymd, local_day_utc_bounds, local_date_range_utc_bounds
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
 
@@ -100,16 +99,27 @@ def list_expenses(
 
     if category:
         stmt = stmt.where(Expense.category == category)
-    if start_date:
+    if start_date and end_date:
         try:
-            parsed_start = datetime.strptime(start_date, "%Y-%m-%d").date()
-            stmt = stmt.where(cast(Expense.created_at, Date) >= parsed_start)
+            range_start, range_end = local_date_range_utc_bounds(
+                parse_ymd(start_date), parse_ymd(end_date)
+            )
+            stmt = stmt.where(
+                Expense.created_at >= range_start,
+                Expense.created_at <= range_end,
+            )
         except ValueError:
             pass
-    if end_date:
+    elif start_date:
         try:
-            parsed_end = datetime.strptime(end_date, "%Y-%m-%d").date()
-            stmt = stmt.where(cast(Expense.created_at, Date) <= parsed_end)
+            day_start, _ = local_day_utc_bounds(parse_ymd(start_date))
+            stmt = stmt.where(Expense.created_at >= day_start)
+        except ValueError:
+            pass
+    elif end_date:
+        try:
+            _, day_end = local_day_utc_bounds(parse_ymd(end_date))
+            stmt = stmt.where(Expense.created_at <= day_end)
         except ValueError:
             pass
 

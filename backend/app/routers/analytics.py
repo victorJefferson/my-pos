@@ -25,6 +25,7 @@ from app.schemas.analytics import (
     TopProfitItem,
     StockAlertItem,
 )
+from app.timeutil import local_today, local_day_utc_bounds, local_date_range_utc_bounds
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -71,15 +72,14 @@ def get_summary(
     if start_date:
         s_date = datetime.strptime(start_date, "%Y-%m-%d").date()
     else:
-        s_date = date.today()
+        s_date = local_today()
 
     if end_date:
         e_date = datetime.strptime(end_date, "%Y-%m-%d").date()
     else:
         e_date = s_date
 
-    day_start = datetime.combine(s_date, datetime.min.time())
-    day_end = datetime.combine(e_date, datetime.max.time())
+    day_start, day_end = local_date_range_utc_bounds(s_date, e_date)
     
     # Keeping 'day' variable for the charts which depend on a single reference day (usually today/end_date)
     day = e_date
@@ -130,7 +130,7 @@ def get_summary(
     )
 
     # --- Payment Breakdown (last 30 days) ---
-    thirty_days_ago = datetime.combine(day - timedelta(days=30), datetime.min.time())
+    thirty_days_ago, _ = local_day_utc_bounds(day - timedelta(days=30))
     recent_sales = db.exec(
         select(Sale).where(
             Sale.tenant_id == tenant_id,
@@ -172,8 +172,7 @@ def get_summary(
     daily_chart = []
     for i in range(13, -1, -1):
         d = day - timedelta(days=i)
-        d_start = datetime.combine(d, datetime.min.time())
-        d_end = datetime.combine(d, datetime.max.time())
+        d_start, d_end = local_day_utc_bounds(d)
         day_sales = [s for s in recent_sales if d_start <= s.created_at <= d_end]
         day_exps = [e for e in recent_expenses if d_start <= e.created_at <= d_end]
 
@@ -194,7 +193,7 @@ def get_summary(
 
     # --- Monthly Chart (last 6 months) ---
     monthly_chart = []
-    six_months_ago = datetime.combine(day - timedelta(days=180), datetime.min.time())
+    six_months_ago, _ = local_day_utc_bounds(day - timedelta(days=180))
     all_sales_6m = db.exec(
         select(Sale).where(
             Sale.tenant_id == tenant_id,
@@ -211,8 +210,9 @@ def get_summary(
     for i in range(5, -1, -1):
         target_month = (day.replace(day=1) - timedelta(days=i * 30)).replace(day=1)
         next_month = (target_month.replace(day=28) + timedelta(days=4)).replace(day=1)
-        m_start = datetime.combine(target_month, datetime.min.time())
-        m_end = datetime.combine(next_month - timedelta(days=1), datetime.max.time())
+        m_start, m_end = local_date_range_utc_bounds(
+            target_month, next_month - timedelta(days=1)
+        )
 
         m_sales = [s for s in all_sales_6m if m_start <= s.created_at <= m_end]
         m_exps = [e for e in all_expenses_6m if m_start <= e.created_at <= m_end]
@@ -400,8 +400,7 @@ def get_analytics_report(
     s_date = datetime.strptime(start_date, "%Y-%m-%d").date()
     e_date = datetime.strptime(end_date, "%Y-%m-%d").date()
 
-    range_start = datetime.combine(s_date, datetime.min.time())
-    range_end = datetime.combine(e_date, datetime.max.time())
+    range_start, range_end = local_date_range_utc_bounds(s_date, e_date)
 
     # Get Tenant Name (Tenant model uses `store_name`)
     tenant = db.exec(select(Tenant).where(Tenant.id == tenant_id)).first()
@@ -458,8 +457,7 @@ def get_analytics_report(
     daily_rows = []
     curr_d = s_date
     while curr_d <= e_date:
-        d_start = datetime.combine(curr_d, datetime.min.time())
-        d_end = datetime.combine(curr_d, datetime.max.time())
+        d_start, d_end = local_day_utc_bounds(curr_d)
 
         d_sales = [s for s in sales if d_start <= s.created_at <= d_end]
         d_exps = [e for e in expenses if d_start <= e.created_at <= d_end]
