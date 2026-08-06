@@ -90,9 +90,11 @@ function AppLayout() {
               <div className="hidden md:flex">
                 <Sidebar />
               </div>
-              <main className="flex-1 overflow-hidden pb-[60px] md:pb-0 flex flex-col">
+              <main className="flex-1 min-h-0 overflow-hidden pb-[60px] md:pb-0 flex flex-col">
                 <OfflineBanner />
-                <div className="flex-1 overflow-hidden">
+                {/* Pages that need internal panes (POS, etc.) use h-full + overflow-hidden.
+                    Content pages (Analytics) grow naturally and scroll here. */}
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
                   <Routes>
                     <Route path="/" element={<POSPage />} />
                     <Route path="/inventory" element={<DesktopOnlyRoute><InventoryPage /></DesktopOnlyRoute>} />

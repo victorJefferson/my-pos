@@ -163,7 +163,7 @@ export default function TransactionsPage() {
 
   /* ─── Render ─────────────────────────────────────────────────────────────── */
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="px-6 py-4 border-b border-slate-200 dark:border-white/5 bg-white/80 dark:bg-[#0a0a14]/80 backdrop-blur-sm flex items-center justify-between">
@@ -189,7 +189,7 @@ export default function TransactionsPage() {
           <button
             onClick={load}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-600 dark:text-white/60 transition-all active:scale-95"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-600 dark:text-white/60 transition-all active:scale-95 lg-hoverable"
           >
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             <span className="hidden sm:inline">Refresh</span>
@@ -232,7 +232,7 @@ export default function TransactionsPage() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30" />
           <input
             type="text"
-            className="w-full pl-8 pr-3 py-2 text-sm bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/30 focus:outline-none focus:border-brand-400 dark:focus:border-brand-500 transition-colors"
+            className="input-field w-full pl-8 pr-3 py-2 text-sm placeholder:text-slate-400 dark:placeholder:text-white/30 focus:outline-none focus:border-brand-400 dark:focus:border-brand-500 transition-colors"
             placeholder="Search by invoice # or product name…"
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -251,7 +251,7 @@ export default function TransactionsPage() {
               onClick={() => setFilterMode(m)}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${filterMode === m
                 ? 'bg-brand-600 text-white dark:bg-brand-500 shadow-sm'
-                : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white/50 hover:bg-slate-200 dark:hover:bg-white/10'}`}
+                : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white/50 hover:bg-slate-200 dark:hover:bg-white/10 lg-hoverable'}`}
             >
               {m === 'ALL' ? 'All' : m}
             </button>

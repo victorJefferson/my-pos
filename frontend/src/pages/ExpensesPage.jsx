@@ -119,7 +119,7 @@ export default function ExpensesPage() {
   const cardSpent = filtered.filter(e => e.payment_mode === 'CARD').reduce((s, e) => s + Number(e.amount || 0), 0)
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200">
       {/* Header */}
       <div className="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
         <div>

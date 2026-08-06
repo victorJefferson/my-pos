@@ -328,7 +328,7 @@ export default function InventoryPage() {
   const outOfStockCount = products.filter(p => p.stock_quantity === 0 && p.is_active).length
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200">
       {/* Header */}
       <div className="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
         <div>
@@ -394,7 +394,7 @@ export default function InventoryPage() {
           className={`group relative flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border transition-all select-none
             ${lowStockOnly
               ? 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/30 dark:border-amber-500/40 dark:text-amber-300 font-semibold shadow-sm'
-              : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:bg-white/5 dark:border-white/10 dark:text-white/50 dark:hover:text-white dark:hover:bg-white/10'}`}>
+              : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:bg-white/5 dark:border-white/10 dark:text-white/50 dark:hover:text-white dark:hover:bg-white/10 lg-hoverable'}`}>
           <AlertTriangle size={12} />
           <span>Low Stock ({lowStockCount})</span>
           {lowStockOnly && (
@@ -414,7 +414,7 @@ export default function InventoryPage() {
           className={`group relative flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border transition-all select-none
             ${outOfStockOnly
               ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/30 dark:border-red-500/40 dark:text-red-300 font-semibold shadow-sm'
-              : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:bg-white/5 dark:border-white/10 dark:text-white/50 dark:hover:text-white dark:hover:bg-white/10'}`}>
+              : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:bg-white/5 dark:border-white/10 dark:text-white/50 dark:hover:text-white dark:hover:bg-white/10 lg-hoverable'}`}>
           <AlertTriangle size={12} />
           <span>Out of Stock ({outOfStockCount})</span>
           {outOfStockOnly && (
@@ -493,7 +493,7 @@ export default function InventoryPage() {
                   { key: 'profit_margin_pct', label: 'Margin %' },
                 ].map(({ key, label }) => (
                   <th key={key} className="pb-3 pr-4 font-medium">
-                    <button className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white transition-colors"
+                    <button className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white transition-colors lg-hoverable rounded-lg px-1 py-0.5"
                       onClick={() => toggleSort(key)}>
                       {label} <SortIcon field={key} />
                     </button>
@@ -543,13 +543,13 @@ export default function InventoryPage() {
                   <td className="py-3">
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => setModal({ product: p })}
-                        className="p-1.5 rounded-lg hover:bg-brand-50 text-slate-400 hover:text-brand-600 dark:hover:bg-brand-600/20 dark:text-white/40 dark:hover:text-brand-400 transition-colors">
+                        className="p-1.5 rounded-lg hover:bg-brand-50 text-slate-400 hover:text-brand-600 dark:hover:bg-brand-600/20 dark:text-white/40 dark:hover:text-brand-400 transition-colors lg-hoverable">
                         <Edit2 size={13} />
                       </button>
                       <button
                         onClick={() => handleDelete(p)}
                         disabled={deletingId === p.id}
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 dark:hover:bg-red-900/30 dark:text-white/40 dark:hover:text-red-400 transition-colors disabled:opacity-50"
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 dark:hover:bg-red-900/30 dark:text-white/40 dark:hover:text-red-400 transition-colors disabled:opacity-50 lg-hoverable"
                       >
                         {deletingId === p.id ? <Loader2 size={13} className="animate-spin text-red-500" /> : <Trash2 size={13} />}
                       </button>

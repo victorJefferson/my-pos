@@ -38,7 +38,7 @@ export default function POSPage() {
   const searchRef = useRef(null)
   const recentRef = useRef(null)
 
-  // ── Initial Load: Fetch full catalog & frequently sold items ────────────────
+  // ── Initial Load: Fetch catalog first; frequently-sold in background ────────
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
@@ -47,31 +47,39 @@ export default function POSPage() {
         setAllProducts(products)
         const cats = [...new Set(products.map((p) => p.category).filter(Boolean))]
         setCategories(['All', ...cats.sort()])
-        try {
-          const freqRes = await productsApi.frequentlySold(20)
-          setFrequentlySold(freqRes.data)
-        } catch {
-          setFrequentlySold(products.slice(0, 20))
-        }
-      } else {
-        const [catRes, prodRes, freqRes] = await Promise.all([
-          productsApi.categories(),
-          productsApi.list({ limit: 1000 }),
-          productsApi.frequentlySold(20).catch(() => ({ data: [] })),
-        ])
-        setCategories(['All', ...catRes.data])
-        setAllProducts(prodRes.data)
-        setFrequentlySold(freqRes.data)
+        setFrequentlySold(products.slice(0, 20))
+        setLoading(false)
+        productsApi.frequentlySold(20)
+          .then((freqRes) => setFrequentlySold(freqRes.data || []))
+          .catch(() => { /* keep catalog slice fallback */ })
+        return
       }
+
+      const [catRes, prodRes] = await Promise.all([
+        productsApi.categories(),
+        productsApi.list({ limit: 1000 }),
+      ])
+      setCategories(['All', ...catRes.data])
+      setAllProducts(prodRes.data)
+      // Show catalog immediately; freq list fills in without blocking skeletons
+      setFrequentlySold(prodRes.data.slice(0, 20))
+      setLoading(false)
+      productsApi.frequentlySold(20)
+        .then((freqRes) => {
+          if (Array.isArray(freqRes.data) && freqRes.data.length) {
+            setFrequentlySold(freqRes.data)
+          }
+        })
+        .catch(() => { /* keep catalog slice fallback */ })
     } catch (e) {
       console.error('Failed to load POS data:', e)
       if (OFFLINE_MODE) {
         try {
           const products = await listProductsCached()
           setAllProducts(products)
+          setFrequentlySold(products.slice(0, 20))
         } catch (_) { /* ignore */ }
       }
-    } finally {
       setLoading(false)
     }
   }, [])

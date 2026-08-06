@@ -3,6 +3,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
 from sqlmodel import select
+from sqlalchemy import func
 
 from app.database import get_session
 from app.auth import get_current_user
@@ -77,27 +78,26 @@ def get_frequently_sold_products(
 ):
     """
     Returns products sorted by historical checkout volume for this tenant.
-    If no sales exist, falls back to recently created active products.
+    Aggregates in SQL so large sale histories do not stall the POS load.
     """
-    # Query top sold product IDs for this tenant
-    results = db.exec(
-        select(SaleItem.product_id, Product)
+    top = db.exec(
+        select(SaleItem.product_id, func.count(SaleItem.id).label("cnt"))
         .join(Product, SaleItem.product_id == Product.id)
         .where(Product.tenant_id == tenant_id, Product.is_active == True)  # noqa: E712
+        .group_by(SaleItem.product_id)
+        .order_by(func.count(SaleItem.id).desc())
+        .limit(limit)
     ).all()
 
-    if not results:
+    if not top:
         return []
 
-    # Aggregate sales count per product
-    product_counts = {}
-    product_map = {}
-    for p_id, product in results:
-        product_counts[p_id] = product_counts.get(p_id, 0) + 1
-        product_map[p_id] = product
-
-    sorted_p_ids = sorted(product_counts.keys(), key=lambda k: product_counts[k], reverse=True)[:limit]
-    return [_to_read(product_map[p_id]) for p_id in sorted_p_ids]
+    ordered_ids = [row[0] for row in top]
+    products = db.exec(
+        select(Product).where(Product.id.in_(ordered_ids))
+    ).all()
+    by_id = {p.id: p for p in products}
+    return [_to_read(by_id[pid]) for pid in ordered_ids if pid in by_id]
 
 
 @router.get("/categories", response_model=List[str], dependencies=[Depends(get_current_user)])

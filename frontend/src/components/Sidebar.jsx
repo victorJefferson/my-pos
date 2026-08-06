@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Sun,
   Moon,
+  Droplets,
   ChevronDown,
   Plus,
   Check,
@@ -25,6 +26,12 @@ import { useTheme } from '../context/ThemeContext'
 import { useAiChat } from '../context/AiChatContext'
 import { authApi } from '../services/api'
 import { useOffline } from '../context/OfflineContext'
+import {
+  THEME_DARK,
+  THEME_LIQUID_GLASS,
+  THEME_TITLES,
+  THEME_ARIA_LABELS,
+} from '../theme/constants'
 
 const navItems = [
   { to: '/', icon: ShoppingCart, label: 'POS Billing', exact: true },
@@ -168,13 +175,13 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="flex flex-col w-64 min-h-screen bg-white dark:bg-[#0a0a14] border-r border-slate-200 dark:border-white/5 shrink-0 transition-colors duration-200">
+    <aside className="lg-shell flex flex-col w-64 min-h-screen bg-white dark:bg-[#0a0a14] border-r border-slate-200 dark:border-white/5 shrink-0 transition-colors duration-200">
       {/* Brand & Store Switcher */}
       <div className="px-5 py-4 border-b border-slate-200 dark:border-white/5 relative shrink-0">
         <div className="flex items-center justify-between">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-2.5 p-1.5 -ml-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 transition-all text-left group flex-1 min-w-0"
+            className="flex items-center gap-2.5 p-1.5 -ml-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 transition-all text-left group flex-1 min-w-0 lg-hoverable"
           >
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-md shadow-brand-500/20 shrink-0">
               <Store className="w-4.5 h-4.5 text-white" />
@@ -190,17 +197,27 @@ export default function Sidebar() {
             </div>
           </button>
 
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-white/40 dark:hover:text-white dark:hover:bg-white/5 border border-slate-200 dark:border-white/10 transition-all active:scale-95 shrink-0 ml-1"
-            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          >
-            {theme === 'dark' ? (
-              <Sun size={16} className="text-amber-400" />
-            ) : (
-              <Moon size={16} className="text-slate-600" />
-            )}
-          </button>
+          <div className="flex items-center gap-1 shrink-0 ml-1">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={`lg-theme-btn p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-white/40 dark:hover:text-white dark:hover:bg-white/5 border border-slate-200 dark:border-white/10 transition-all active:scale-95 shrink-0 ${
+                theme === THEME_LIQUID_GLASS ? 'text-white/90' : ''
+              }`}
+              title={THEME_TITLES[theme] || THEME_TITLES.light}
+              aria-label={THEME_ARIA_LABELS[theme] || THEME_ARIA_LABELS.light}
+            >
+              {theme === THEME_LIQUID_GLASS ? (
+                <span className="lg-icon-well">
+                  <Droplets size={14} />
+                </span>
+              ) : theme === THEME_DARK ? (
+                <Sun size={16} className="text-amber-400" />
+              ) : (
+                <Moon size={16} className="text-slate-600" />
+              )}
+            </button>
+          </div>
         </div>
 
         {dropdownOpen && (
@@ -251,7 +268,7 @@ export default function Sidebar() {
                 title={label}
                 onClick={handleNavClick}
                 className={({ isActive }) =>
-                  `flex items-center justify-center w-9 h-9 rounded-xl transition-all border ${
+                  `flex items-center justify-center w-9 h-9 rounded-xl transition-all border lg-hoverable ${
                     isActive
                       ? 'bg-brand-50 text-brand-700 border-brand-200 dark:bg-brand-600/20 dark:text-brand-300 dark:border-brand-500/30'
                       : 'text-slate-400 border-transparent hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/5 dark:hover:text-white/70'
@@ -272,7 +289,7 @@ export default function Sidebar() {
               end={exact}
               onClick={handleNavClick}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group border
+                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group border lg-hoverable
                 ${isActive
                   ? 'bg-brand-50 text-brand-700 border-brand-200 dark:bg-brand-600/20 dark:text-brand-300 dark:border-brand-500/30'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border-transparent dark:text-white/50 dark:hover:text-white dark:hover:bg-white/5'
@@ -379,7 +396,7 @@ export default function Sidebar() {
           <button
             type="button"
             onClick={openChatHistory}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 dark:text-white/50 dark:hover:text-white dark:hover:bg-white/5 transition-all border border-transparent"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 dark:text-white/50 dark:hover:text-white dark:hover:bg-white/5 transition-all border border-transparent lg-hoverable"
           >
             <MessageSquare size={18} className="text-slate-400" />
             <span className="flex-1 text-left">Chat History</span>

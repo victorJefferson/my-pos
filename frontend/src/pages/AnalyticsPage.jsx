@@ -139,7 +139,7 @@ export default function AnalyticsPage() {
   ].filter(d => d.value > 0) : []
 
   return (
-    <div className="flex flex-col h-screen overflow-auto px-6 py-5 gap-6 bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200">
+    <div className="flex flex-col px-6 py-5 gap-6 pb-10 bg-slate-50 dark:bg-[#0d0d14] transition-colors duration-200">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
